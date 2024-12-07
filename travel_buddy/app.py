@@ -165,6 +165,56 @@ def create_app(config_class=ProductionConfig):
             app.logger.error("Error during login for username %s: %s", username, str(e))
             return jsonify({"error": "An unexpected error occurred."}), 500
 
+    @app.route('/update-password', methods=['POST'])
+    def update_password():
+        """
+        Route to update a user password.
+
+        Expected JSON Input:
+            - username (str): The username of the user.
+            - old password (str): The user's password.
+            - new password (str): the user's new password
+
+        Returns:
+            JSON response indicating the success of the login.
+
+        Raises:
+            400 error if input validation fails.
+            401 error if authentication fails (invalid username or password).
+            500 error for any unexpected server-side issues.
+        """
+        data = request.get_json()
+        if not data or 'username' not in data or 'old password' not in data or 'new password' not in data:
+            app.logger.error("Invalid request payload for login.")
+            raise BadRequest("Invalid request payload. 'username', 'old password', 'new password' are required.")
+
+        username = data['username']
+        old_password = data['old password']
+        new_password = data['new password']
+
+        try:
+            # Validate user credentials
+            if not User.check_password(username, old_password):
+                app.logger.warning("Login failed for username: %s", username)
+                raise Unauthorized("Invalid username or old_password.")
+
+            # Get user ID
+            user_id = User.get_id_by_username(username)
+
+            # Change user's password
+            app.logger.info('Changing user password: %s', username)
+            User.delete_user(username)
+            User.create_user(username, new_password)
+
+
+            app.logger.info("User %s password changed successfully.", username)
+            return jsonify({"message": f"User {username} password changed successfully."}), 200
+
+        except Unauthorized as e:
+            return jsonify({"error": str(e)}), 401
+        except Exception as e:
+            app.logger.error("Error during password changed for username %s: %s", username, str(e))
+            return jsonify({"error": "An unexpected error occurred."}), 500
 
     @app.route('/logout', methods=['POST'])
     def logout():
