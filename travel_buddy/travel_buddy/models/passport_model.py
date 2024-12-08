@@ -3,10 +3,6 @@ import os
 import time
 from typing import Any, List
 
-from meal_max.models.kitchen_model import Meals
-from meal_max.utils.logger import configure_logger
-from meal_max.utils.random_utils import get_random
-
 
 logger = logging.getLogger(__name__)
 configure_logger(logger)
@@ -15,21 +11,17 @@ configure_logger(logger)
 TTL = os.getenv("TTL", 60)  # Default TTL is 60 seconds
 
 
-class BattleModel:
+class PassportModel:
     """
-    A class to manage the battle between two combatants.
+    A class to handle user requests for countries.
 
     Attributes:
-        combatants (List[dict[str, Any]]): The list of combatants in the battle.
-        combatant_ttls (dict[int, int]): A dictionary to store TTL for each combatant.
-        meals_cache (dict[int, dict[str, Any]]): A dictionary to cache meal data by ID.
+        A passport dictionary containing Country items with int Id number.
     """
 
     def __init__(self):
-        """Initializes the BattleManager with an empty list of combatants and TTL."""
-        self.combatants: List[int] = []  # List of active combatants
-        self.combatant_ttls: dict[int, int] = {}  # Dictionary to store TTL for each combatant
-        self.meals_cache: dict[int, dict[str, Any]] = {}  # Cache of meal data by ID
+        """Initializes the Passport class with an list of countries already entered by user."""
+        self.passport: dict[int, Country] = {}
 
     def battle(self) -> str:
         """
