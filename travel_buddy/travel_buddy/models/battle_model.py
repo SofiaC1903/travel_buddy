@@ -3,9 +3,9 @@ import os
 import time
 from typing import Any, List
 
-from meal_max.models.kitchen_model import Meals
-from meal_max.utils.logger import configure_logger
-from meal_max.utils.random_utils import get_random
+from travel_buddy.travel_buddy.models.kitchen_model import Meals
+from travel_buddy.travel_buddy.utils.logger import configure_logger
+from travel_buddy.travel_buddy.utils.random_utils import get_random
 
 
 logger = logging.getLogger(__name__)

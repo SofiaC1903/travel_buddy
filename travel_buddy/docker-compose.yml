@@ -6,15 +6,15 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
-      - DATABASE_URL=sqlite:////app/db/app.db
+      - DATABASE_URL=sqlite:////db/app.db
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - MONGO_HOST=mongod
       - MONGO_PORT=27017
     volumes:
-      - ./db:/app/db
+      - ./db:/db
     depends_on:
       - redis
       - mongo
