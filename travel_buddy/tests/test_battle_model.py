@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from meal_max.models.battle_model import BattleModel
+from travel_buddy.models.battle_model import BattleModel
 
 
 @pytest.fixture

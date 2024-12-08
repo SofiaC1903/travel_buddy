@@ -1,14 +1,14 @@
 from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response, Response, request
 from werkzeug.exceptions import BadRequest, Unauthorized
-# from flask_cors import CORS
-
-from config import ProductionConfig
-from meal_max.db import db
-from meal_max.models.battle_model import BattleModel
-from meal_max.models.kitchen_model import Meals
-from meal_max.models.mongo_session_model import MongoSessionModel
-from meal_max.models.user_model import User
+from flask_cors import CORS
+import os
+from travel_buddy.config import ProductionConfig
+from travel_buddy.travel_buddy.db import db
+from travel_buddy.travel_buddy.models.battle_model import BattleModel
+from travel_buddy.travel_buddy.models.kitchen_model import Meals
+from travel_buddy.travel_buddy.models.mongo_session_model import MongoSessionModel
+from travel_buddy.travel_buddy.models.user_model import User
 
 # Load environment variables from .env file
 load_dotenv()
@@ -16,8 +16,12 @@ load_dotenv()
 def create_app(config_class=ProductionConfig):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    db_path = os.path.join(os.getcwd(), "db")  # Use a relative writable path
+    if not os.path.exists(db_path):
+        os.makedirs(db_path)  # Create directory if it doesn't exist
 
-    db.init_app(app)  # Initialize db with app
+    db.init_app(app)
+
     with app.app_context():
         db.create_all()  # Recreate all tables
 
@@ -29,7 +33,23 @@ def create_app(config_class=ProductionConfig):
     #
     ####################################################
 
+    @app.route('/api/get-users', methods=['GET'])
+    def get_users() -> Response:
+        """
+        Route to retrieve all users.
 
+        Returns:
+            JSON response containing a list of users with their usernames and other details.
+        """
+        try:
+            app.logger.info("Fetching all users...")
+            users = User.query.all()
+            user_list = [{"id": user.id, "username": user.username} for user in users]
+            return make_response(jsonify({"status": "success", "users": user_list}), 200)
+        except Exception as e:
+            app.logger.error("Failed to fetch users: %s", str(e))
+            return make_response(jsonify({"error": "An unexpected error occurred."}), 500)
+    
     @app.route('/api/health', methods=['GET'])
     def healthcheck() -> Response:
         """
@@ -486,8 +506,8 @@ def create_app(config_class=ProductionConfig):
             app.logger.error(f"Error generating leaderboard: {e}")
             return make_response(jsonify({'error': str(e)}), 500)
 
+    
     return app
-
 
 if __name__ == '__main__':
     app = create_app()

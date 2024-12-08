@@ -4,8 +4,8 @@ import os
 
 from sqlalchemy.exc import IntegrityError
 
-from meal_max.db import db
-from meal_max.utils.logger import configure_logger
+from travel_buddy.travel_buddy.db import db
+from travel_buddy.travel_buddy.utils.logger import configure_logger
 
 
 logger = logging.getLogger(__name__)
@@ -45,8 +45,15 @@ class User(db.Model):
             password (str): The password to hash and store.
 
         Raises:
-            ValueError: If a user with the username already exists.
+            ValueError: If a user with the username already exists or if input is invalid.
         """
+        # Validate input
+        username = username.strip().lower()
+        if not username or not username.strip():
+            raise ValueError("Username cannot be empty or whitespace.")
+        if not password or not password.strip():
+            raise ValueError("Password cannot be empty or whitespace.")
+
         salt, hashed_password = cls._generate_hashed_password(password)
         new_user = cls(username=username, salt=salt, password=hashed_password)
         try:
@@ -77,6 +84,7 @@ class User(db.Model):
         Raises:
             ValueError: If the user does not exist.
         """
+        username = username.strip().lower()
         user = cls.query.filter_by(username=username).first()
         if not user:
             logger.info("User %s not found", username)
