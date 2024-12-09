@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass
 import logging
+import sqlite3
 import country as info
 from typing import Any, List
 
@@ -52,7 +53,12 @@ class Country(db.Model):
         #    raise ValueError(f"Invalid difficulty level: {difficulty}. Must be 'LOW', 'MED', or 'HIGH'.")
 
         # Create and commit the new country
-        new_country = cls(country = country, capital= info.get_country_capital(country), languages=info.get_country_language(country), currency=info.get_country_currency(country), region=info.get_country_region(country), countrycode=info.get_country_code(country))
+        capital = info.get_country_capital(country)
+        languages = info.get_country_language(country)
+        currency = info.get_country_currency(country)
+        region = info.get_country_region(country)
+        countrycode = info.get_country_code(country)
+        new_country = cls(country = country, capital= capital, languages=languages, currency=currency, region= region, countrycode=countrycode)
         try:
             db.session.add(new_country)
             db.session.commit()
@@ -66,6 +72,26 @@ class Country(db.Model):
                 logger.error("Database error: %s", str(e))
                 raise
 
+def clear_countries() -> None:
+    """
+    Recreates the countries table, effectively deleting all countries.
+
+    Raises:
+        sqlite3.Error: If any database error occurs.
+    """
+    try:
+        # Drop the countries table if it exists
+        db.drop_all(bind=None, tables=[Country.__table__])
+        
+        # Create the countries table again
+        db.create_all(bind=None)
+
+        logger.info("Countries cleared and table recreated successfully.")
+
+    except Exception as e:
+        logger.error("Error while clearing countries: %s", str(e))
+        raise e
+    
     @classmethod
     def delete_country(cls, country_id: int) -> None:
         """
