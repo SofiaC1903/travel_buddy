@@ -1,6 +1,5 @@
 from dataclasses import asdict, dataclass
 import logging
-import sqlite3
 import country as info
 from typing import Any, List
 
