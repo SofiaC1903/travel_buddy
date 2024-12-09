@@ -80,23 +80,23 @@ def get_country_capital(country):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@country_bp.route('/api/country/population/<country>', methods=['GET'])
-def get_country_population(country):
+@country_bp.route('/api/country/code/<country>', methods=['GET'])
+def get_country_code(country):
     """
-    Query the population of a given country.
+    Query the CCA2 code of a given country.
     
     Args:
         country (str): name of the country to query.
 
     Returns:
-        JSON response containing the country's population or an error message.
+        JSON response containing the country's CCA2 code or an error message.
     """
     try:
         response = requests.get(f'{REST_COUNTRIES_API_BASE}/name/{country}')
         if response.status_code == 200:
             data = response.json()[0]
-            population = data.get('population', 'N/A')
-            return jsonify({"country": country, "population": population}), 200
+            code = data.get('alpha2Code', 'N/A')
+            return jsonify({"country": country, "CCA2 Code": code}), 200
         else:
             return jsonify({"error": "Country not found"}), 404
     except Exception as e:
