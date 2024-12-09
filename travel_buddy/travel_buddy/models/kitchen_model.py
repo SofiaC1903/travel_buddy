@@ -15,23 +15,23 @@ configure_logger(logger)
 
 
 @dataclass
-class Meals(db.Model):
-    __tablename__ = 'meals'
+class Country(db.Model):
+    __tablename__ = 'countries'
 
     id: int = db.Column(db.Integer, primary_key=True)
-    meal: str = db.Column(db.String(80), unique=True, nullable=False)
-    cuisine: str = db.Column(db.String(50))
-    price: float = db.Column(db.Float, nullable=False)
-    difficulty: str = db.Column(db.String(10), nullable=False)
-    battles: int = db.Column(db.Integer, default=0)
-    wins: int = db.Column(db.Integer, default=0)
+    country: str = db.Column(db.String(80), unique=True, nullable=False)
+    capital: str = db.Column(db.String(50))
+    languages: str = db.Column(db.String(50), nullable=False)
+    currency: str = db.Column(db.String(10), nullable=False)
+    region: str = db.Column(db.String(50), default=0)
+    countrycode: str = db.Column(db.String(10), default=0)
     deleted: bool = db.Column(db.Boolean, default=False)
 
     def __post_init__(self):
-        if self.price < 0:
-            raise ValueError("Price must be a positive value.")
-        if self.difficulty not in ['LOW', 'MED', 'HIGH']:
-            raise ValueError("Difficulty must be 'LOW', 'MED', or 'HIGH'.")
+        if len(self.countrycode) > 2:
+            raise ValueError("Country code must be in CCA2 format.")
+        if self.region not in ['Africa','Americas', 'Asia', 'Europe','Oceania']:
+            raise ValueError("Region must be one of the following: 'Africa','Americas', 'Asia', 'Europe','Oceania'.")
 
     @classmethod
     def create_meal(cls, meal: str, cuisine: str, price: float, difficulty: str, battles: int = 0, wins: int = 0) -> None:

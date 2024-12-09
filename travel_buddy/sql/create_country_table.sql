@@ -5,7 +5,7 @@ CREATE TABLE countries (
     capital TEXT NOT NULL UNIQUE,
     languages TEXT NOT NULL,
     currency TEXT NOT NULL,
-    region TEXT CHECK(region IN ('AFRICA','AMERICA', 'ASIA', 'EUROPE','ANTARTICA','AUSTRALIA','OCEANIA')),
+    region TEXT CHECK(region IN ('Africa','Americas', 'Asia', 'Europe','Oceania')),
     countrycode TEXT NOT NULL UNIQUE,
     deleted BOOLEAN DEFAULT FALSE
 );
