@@ -95,12 +95,13 @@ def get_country_code(country):
         response = requests.get(f'{REST_COUNTRIES_API_BASE}/name/{country}')
         if response.status_code == 200:
             data = response.json()[0]
-            code = data.get('alpha2Code', 'N/A')
+            code = data.get('cca2', 'N/A')  # Correctly fetch 'cca2' field
             return jsonify({"country": country, "CCA2 Code": code}), 200
         else:
             return jsonify({"error": "Country not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @country_bp.route('/api/country/region/<country>', methods=['GET'])
 def get_country_region(country):
