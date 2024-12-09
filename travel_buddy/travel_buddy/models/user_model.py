@@ -4,8 +4,8 @@ import os
 
 from sqlalchemy.exc import IntegrityError
 
-from meal_max.db import db
-from meal_max.utils.logger import configure_logger
+from travel_buddy.db import db
+from travel_buddy.logger import configure_logger
 
 
 logger = logging.getLogger(__name__)

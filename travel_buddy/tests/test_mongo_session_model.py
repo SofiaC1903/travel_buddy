@@ -1,6 +1,6 @@
 import pytest
 
-from meal_max.models.mongo_session_model import MongoSessionModel
+from travel_buddy.models.mongo_session_model import MongoSessionModel
 
 
 @pytest.fixture
