@@ -5,7 +5,7 @@ import os
 from sqlalchemy.exc import IntegrityError
 
 from travel_buddy.db import db
-from travel_buddy.logger import configure_logger
+from travel_buddy.utils.logger import configure_logger
 
 
 logger = logging.getLogger(__name__)

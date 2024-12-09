@@ -2,14 +2,11 @@ import logging
 import os
 import time
 from typing import Any, List
-
+from travel_buddy.utils.logger import configure_logger
+from travel_buddy.models.country_model import Country
 
 logger = logging.getLogger(__name__)
 configure_logger(logger)
-
-
-TTL = os.getenv("TTL", 60)  # Default TTL is 60 seconds
-
 
 class PassportModel:
     """
@@ -20,8 +17,8 @@ class PassportModel:
     """
 
     def __init__(self):
-        """Initializes the Passport class with an list of countries already entered by user."""
-        self.passport: dict[int, Country] = {}
+        """Initializes the Passport class with a list of countries already entered by user."""
+        self.passport: dict[int, Country] = {Country.get_countries()}
 
     def battle(self) -> str:
         """
