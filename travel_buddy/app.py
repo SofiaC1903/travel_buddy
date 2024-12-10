@@ -156,8 +156,6 @@ def create_app(config_class=ProductionConfig):
             # Get user ID
             user_id = User.get_id_by_username(username)
 
-            # Load user's combatants into the battle model
-            MongoSessionModel.login_user(user_id, battle_model)
 
             app.logger.info("User %s logged in successfully.", username)
             return jsonify({"message": f"User {username} logged in successfully."}), 200
@@ -468,8 +466,6 @@ def create_app(config_class=ProductionConfig):
             app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
         
-    return app
-
     @app.route('/api/get-countries-by-region', methods=['GET'])
     def get_countries_by_region(region) -> Response:
         """
@@ -485,7 +481,9 @@ def create_app(config_class=ProductionConfig):
         except Exception as e:
             app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-        
+    
+    return app
+
 if __name__ == '__main__':
     app = create_app()
     app.run(debug=True, host='0.0.0.0', port=5000)
