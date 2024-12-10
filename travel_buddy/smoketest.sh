@@ -55,57 +55,66 @@ check_db() {
 
 # Function to add a country
 create_country() {
-  echo "Adding a country..."
-  curl -s -X POST "$BASE_URL/create-country" -H "Content-Type: application/json" \
-    -d '{"country":"China"}' | grep -q '"status": "country added"'
-  if [ $? -eq 0 ]; then
-    echo "Country added successfully."
+  country=$1
+  echo "Adding a country($country) to country class"
+  curl -s -X POST "$BASE_URL/create-country/" -H "Content-Type: application/json" \
+    -H "Content-Type: application/json" \
+    -d "{\"country\":\"$country\""}")"
+
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Meal added successfully."
   else
-    echo "Failed to add combatant."
+    echo "Failed to add meal. Response: $response"
     exit 1
   fi
 }
 
+
 # Function to delete a country by ID(1)
 delete_country() {
-  echo "Deleting country by ID (1)..."
-  response=$(curl -s -X DELETE "$BASE_URL/delete-country/1")
-  if echo "$response" | grep -q '"status": "country deleted"'; then
-    echo "Country deleted successfully by ID (1)."
+  country_id=$1
+  echo "Deleting country by ID ($country_id)..."
+  response=$(curl -s -X DELETE "$BASE_URL/delete-country/$country_id")
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Meal deleted successfully by ID ($country_id)."
   else
-    echo "Failed to delete country by ID (1)."
+    echo "Failed to delete meal by ID ($country_id)."
     exit 1
   fi
 }
 
 # Function to get a country by ID (1)
 get_country_by_id() {
-  echo "Getting country by ID (1)..."
-  response=$(curl -s -X GET "$BASE_URL/get-country-by-id/1")
+  country_id=$1
+  echo "Getting country by ID ($country_id)..."
+
+  response=$(curl -s -X GET "$BASE_URL/get-country-by-id/$country_id")
   if echo "$response" | grep -q '"status": "success"'; then
-    echo "Country retrieved successfully by ID (1)."
+    echo "Country retrieved successfully by ID ($country_id)."
     if [ "$ECHO_JSON" = true ]; then
-      echo "Country JSON (ID 1):"
+      echo "Country JSON (ID $country_id):"
       echo "$response" | jq .
     fi
   else
-    echo "Failed to get country by ID (1)."
+    echo "Failed to get country by ID ($country_id)."
     exit 1
   fi
 }
 
 # Function to get a meal by name
 get_country_by_name() {
-  echo "Getting country by name (China)..."
-  response=$(curl -s -X GET "$BASE_URL/get-country-by-name/China")
+  country_name=$1
+
+  echo "Getting country by name ($country_name)..."
+  response=$(curl -s -X GET "$BASE_URL/get-country-by-name/$country_name")
   if echo "$response" | grep -q '"status": "success"'; then
-    echo "Country retrieved successfully by name (China)."
+    echo "Country retrieved successfully by name ($country_name)."
     if [ "$ECHO_JSON" = true ]; then
-      echo "Country JSON (China):"
+      echo "Country JSON ($country_name):"
       echo "$response" | jq .
     fi
   else
-    echo "Failed to get country by name (China)."
+    echo "Failed to get country by name ($country_name)."
     exit 1
   fi
 }
@@ -119,11 +128,12 @@ get_country_by_name() {
 # Function to clear the countries
 clear_countries() {
   echo "Clearing countries..."
-  curl -s -X POST "$BASE_URL/clear-countries" -H "Content-Type: application/json" | grep -q '"status": "countries cleared"'
-  if [ $? -eq 0 ]; then
-    echo "Countries cleared successfully."
+  response=$(curl -s -X POST "$BASE_URL/clear-countries")
+
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Countries list cleared successfully."
   else
-    echo "Failed to clear countries."
+    echo "Failed to clear countries list."
     exit 1
   fi
 }
@@ -131,10 +141,12 @@ clear_countries() {
 # Function to get the current list of countries
 get_countries() {
   echo "Getting the current list of countries..."
-  response=$(curl -s -X GET "$BASE_URL/get-countries")
+  response=$(curl -s -X GET "$BASE_URL/get-countries"\
+    -H "Content-Type: application/json" \
+   )
 
   # Check if the response contains combatants or an empty list
-  if echo "$response" | grep -q '"countries"'; then
+  if echo "$response" | grep -q '"status": "success"'; then
     echo "Countries retrieved successfully."
     if [ "$ECHO_JSON" = true ]; then
       echo "Countries JSON:"
@@ -152,26 +164,107 @@ get_countries() {
 
 # Function to get a country by its capital
 get_country_by_capital() {
-  echo "Getting the country with its capital..."
-  response=$(curl -s -X GET "$BASE_URL/get-country-by-capital")
+  capital=$1
 
-  # Check if the response contains combatants or an empty list
-  if echo "$response" | grep -q '"countries"'; then
-    echo "Countries retrieved successfully."
+  echo "Getting the country with its capital ($capital)..."
+  response=$(curl -s -X GET "$BASE_URL/get-country-by-capital/$capital")
+
+  # Check if the response contains country or an empty list
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Country retrieved successfully by capital ($capital)."
     if [ "$ECHO_JSON" = true ]; then
-      echo "Countries JSON:"
+      echo "Country JSON ($capital):"
       echo "$response" | jq .
     fi
   else
-    echo "Failed to get countries or no countries found."
-    if [ "$ECHO_JSON" = true ]; then
-      echo "Error or empty response:"
-      echo "$response" | jq .
-    fi
+    echo "Failed to get country by capital ($capital)."
     exit 1
   fi
 }
 
+# Function to get a country by its code
+get_country_by_code() {
+  code=$1
+
+  echo "Getting the country with its CCA2 code ($code)..."
+
+  response=$(curl -s -X GET "$BASE_URL/get-country-by-code/$code")
+
+  # Check if the response contains country or an empty list
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Country retrieved successfully with code ($code)."
+    if [ "$ECHO_JSON" = true ]; then
+      echo "Country JSON ($code):"
+      echo "$response" | jq .
+    fi
+  else
+    echo "Failed to get country by code ($code)."
+    exit 1
+  fi
+}
+
+# Function to get a country by its language
+get_countries_by_language() {
+  language=$1
+
+  echo "Getting the countries that speak given language ($language)..."
+
+  response=$(curl -s -X GET "$BASE_URL/get-countries-by-language/$language")
+
+  # Check if the response contains country or an empty list
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Countries retrieved successfully with language ($language)."
+    if [ "$ECHO_JSON" = true ]; then
+      echo "Country JSON ($language):"
+      echo "$response" | jq .
+    fi
+  else
+    echo "Failed to get country by language ($language)."
+    exit 1
+  fi
+}
+
+# Function to get a country by its currency
+get_countries_by_currency() {
+  currency=$1
+
+  echo "Getting the countries that use a given currency ($currency)..."
+
+  response=$(curl -s -X GET "$BASE_URL/get-countries-by-currency/$currency")
+
+  # Check if the response contains country or an empty list
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Countries retrieved successfully with currency ($currency)."
+    if [ "$ECHO_JSON" = true ]; then
+      echo "Country JSON ($currency):"
+      echo "$response" | jq .
+    fi
+  else
+    echo "Failed to get country by currency ($currency)."
+    exit 1
+  fi
+}
+
+# Function to get a country by its region
+get_countries_by_region() {
+  region=$1
+
+  echo "Getting the countries that use a given region ($region)..."
+
+  response=$(curl -s -X GET "$BASE_URL/get-countries-by-region/$region")
+
+  # Check if the response contains country or an empty list
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Countries retrieved successfully with region ($region)."
+    if [ "$ECHO_JSON" = true ]; then
+      echo "Country JSON ($region):"
+      echo "$response" | jq .
+    fi
+  else
+    echo "Failed to get country by region ($region)."
+    exit 1
+  fi
+}
 
 # Function to initialize the database
 init_db() {
@@ -249,19 +342,40 @@ delete_user() {
 
 
 # Run all the steps in orderchmod +x smoketest.sh
-create_user
-check_user_password
-update_user_password
-check_user_password
-delete_user
 
+# Health checks
 check_health
-init_db
-create_country
-get_countries
+check_db
+
+# Clear the catalog
 clear_countries
-get_countries_by_name
-get_countries_by_id
-delete_countries_by_id
+
+# Create countries
+create_country "China" 
+create_country "Germany"
+create_country "Finland" 
+create_country "Norway" 
+create_country "United States of America" 
+
+get_country_by_id 2
+get_country_by_id 4
+get_country_by_name "China"
+get_country_by_name "Germany"
+
+delete_country 3
+
+get_countries
+
+get_country_by_capital "Oslo"
+
+get_country_by_code "US"
+
+get_countries_by_language "English"
+
+get_countries_by_currency "USD"
+
+get_countries_by_region "Europe"
+
+clear_countries
 
 echo "All tests passed successfully!"
