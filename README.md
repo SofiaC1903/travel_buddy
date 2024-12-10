@@ -169,3 +169,193 @@
       "message": "User example_user logged out successfully."
     }
     ```
+Here’s a detailed breakdown of the routes in the required documentation format:  
+
+---
+
+#### **Route Name:** Add Country  
+- **Path:** `/api/create-country`  
+- **Request Type:** POST  
+- **Purpose:** Adds a new country to the database.  
+- **Request Format:**  
+  - **POST Body:**  
+    ```json
+    {
+      "name": "Panama",
+      "capital": "Panama City",
+      "languages": ["Spanish"],
+      "currency": "USD",
+      "region": "Americas",
+      "alpha2_code": "PA"
+    }
+    ```  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "country added",
+      "country": "Panama"
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Invalid input. All fields are required with valid values."
+    }
+    ```  
+
+#### **Route Name:** Delete Country  
+- **Path:** `/api/delete-country/<int:country_id>`  
+- **Request Type:** DELETE  
+- **Purpose:** Deletes a country by its ID (soft delete).  
+- **Request Format:**  
+  - Path Parameter:  
+    - `country_id` (integer): The ID of the country to delete.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "country deleted"
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Error deleting country: [details]"
+    }
+    ```  
+
+#### **Route Name:** Clear Countries  
+- **Path:** `/api/clear-countries`  
+- **Request Type:** POST  
+- **Purpose:** Clears all user-entered countries.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "countries cleared"
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Failed to clear countries: [details]"
+    }
+    ```  
+
+#### **Route Name:** Get Countries  
+- **Path:** `/api/get-countries`  
+- **Request Type:** GET  
+- **Purpose:** Retrieves all countries entered by users.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "countries": [
+        {"id": 1, "name": "Panama", "capital": "Panama City", "region": "Americas"}
+      ]
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Failed to get countries: [details]"
+    }
+    ```  
+
+#### **Route Name:** Get Country by ID  
+- **Path:** `/api/get-country-by-id/<int:country_id>`  
+- **Request Type:** GET  
+- **Purpose:** Fetches details of a country by its ID.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "country": {"id": 1, "name": "Panama", "capital": "Panama City"}
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Error retrieving country by ID: [details]"
+    }
+    ```  
+
+#### **Route Name:** Get Country by Name  
+- **Path:** `/api/get-country-by-name/<string:country_name>`  
+- **Request Type:** GET  
+- **Purpose:** Fetches details of a country by its name.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "country": {"id": 1, "name": "Panama", "capital": "Panama City"}
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Error retrieving country by name: [details]"
+    }
+    ```  
+
+#### **Route Name:** Initialize Database  
+- **Path:** `/api/init-db`  
+- **Request Type:** POST  
+- **Purpose:** Drops and recreates database tables to reset the database.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "message": "Database initialized successfully."
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "status": "error",
+      "message": "Failed to initialize database."
+    }
+    ```  
+
+#### **Route Name:** Get Country by Capital  
+- **Path:** `/api/get-country-by-capital`  
+- **Request Type:** GET  
+- **Purpose:** Retrieves a country by its capital.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "country": {"name": "Panama", "capital": "Panama City"}
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Failed to get country: [details]"
+    }
+    ```  
+
+#### **Route Name:** Get Countries by Region  
+- **Path:** `/api/get-countries-by-region`  
+- **Request Type:** GET  
+- **Purpose:** Retrieves all countries in a specified region.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "countries": [{"name": "Panama", "region": "Americas"}]
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Failed to get countries by region: [details]"
+    }
+    ```  
