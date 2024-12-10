@@ -418,7 +418,7 @@ def create_app(config_class=ProductionConfig):
             return make_response(jsonify({'error': str(e)}), 500)
         
     @app.route('/api/get-country-by-code', methods=['GET'])
-    def get_country_by_capital(countrycode) -> Response:
+    def get_country_by_code(countrycode) -> Response:
         """
         Route to get the a country by its code.
 
