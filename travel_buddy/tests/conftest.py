@@ -1,8 +1,8 @@
 import pytest
 
-from app import create_app
-from config import TestConfig
-from travel_buddy.db import db
+from ..app import create_app
+from ..config import TestConfig
+from travel_buddy.travel_buddy.db import db
 
 @pytest.fixture
 def app():

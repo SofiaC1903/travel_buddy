@@ -1,0 +1,65 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Django/Flask specific
+db.sqlite3
+*.db
+
+# Logs and debug files
+*.log
+*.sqlite3-journal
+*.out
+*.pid
+
+# Docker-specific
+*.swp
+docker-compose.override.yml
+
+# Virtual environment
+venv/
+.env/
+*.egg-info/
+
+# Coverage and testing
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.cache
+.pytest_cache/
+tests/__pycache__/
+
+# System files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+
+# Build artifacts
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Other directories
+db/
+travel_buddy/__pycache__/
+travel_buddy/tests/__pycache__/
+travel_buddy/travel_buddy/__pycache__/
+travel_buddy/travel_buddy/clients/__pycache__/
+travel_buddy/travel_buddy/models/__pycache__/
+travel_buddy/travel_buddy/utils/__pycache__/

@@ -1,7 +1,7 @@
 import logging
 import requests
 
-from meal_max.utils.logger import configure_logger
+from travel_buddy.travel_buddy.utils.logger import configure_logger
 
 logger = logging.getLogger(__name__)
 configure_logger(logger)
