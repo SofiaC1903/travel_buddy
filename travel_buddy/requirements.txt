@@ -16,3 +16,4 @@ zipp==3.21.0
 SQLAlchemy==2.0.36
 pytest
 pytest-mock
+flask_sqlalchemy

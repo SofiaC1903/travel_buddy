@@ -3,12 +3,11 @@ from flask import Flask, jsonify, make_response, Response, request
 from werkzeug.exceptions import BadRequest, Unauthorized
 # from flask_cors import CORS
 
-from travel_buddy.config import ProductionConfig
-from travel_buddy.travel_buddy.db import db
-from travel_buddy.travel_buddy.models.country_model import Country
-from travel_buddy.travel_buddy.models.passport_model import PassportModel
-from travel_buddy.travel_buddy.models.mongo_session_model import MongoSessionModel
-from travel_buddy.travel_buddy.models.user_model import User
+from config import ProductionConfig
+from travel_buddy.db import db
+from travel_buddy.models.country_model import Country
+from travel_buddy.models.passport_model import PassportModel
+from travel_buddy.models.user_model import User
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,7 +20,7 @@ def create_app(config_class=ProductionConfig):
     with app.app_context():
         db.create_all()  # Recreate all tables
 
-    from travel_buddy.travel_buddy.country import country_bp
+    from travel_buddy.country import country_bp
     app.register_blueprint(country_bp)
 
     country_model = Country()
@@ -85,6 +84,73 @@ def create_app(config_class=ProductionConfig):
             return make_response(jsonify({'status': 'user added', 'username': username}), 201)
         except Exception as e:
             app.logger.error("Failed to add user: %s", str(e))
+            return make_response(jsonify({'error': str(e)}), 500)
+        
+    @app.route('/api/users', methods=['GET'])
+    def get_users() -> Response:
+        """
+        Route to retrieve all users.
+
+        Returns:
+            JSON response with a list of all users.
+            Each user could be represented as a dictionary, for instance:
+            {
+                "id": user_id,
+                "username": username
+            }
+
+        Raises:
+            500 error if there is an issue retrieving users from the database.
+        """
+        app.logger.info('Fetching all users')
+        try:
+            # Retrieve all users from the database
+            users = User.get_all_users()  # Ensure User.get_all_users() returns something iterable
+
+            # Convert users to a JSON-serializable list of dicts
+            # Adjust the fields as necessary based on your User model
+            users_list = []
+            for user in users:
+                users_list.append({
+                    'id': user.id,
+                    'username': user.username
+                })
+
+            app.logger.info("Total users fetched: %d", len(users_list))
+            return make_response(jsonify(users_list), 200)
+        except Exception as e:
+            app.logger.error("Failed to fetch users: %s", str(e))
+            return make_response(jsonify({'error': str(e)}), 500)
+        
+    @app.route('/api/users/<int:user_id>', methods=['GET'])
+    def get_user(user_id: int) -> Response:
+        """
+        Route to retrieve a single user by their unique ID.
+
+        Args:
+            user_id (int): The ID of the user to retrieve.
+
+        Returns:
+            JSON response with the user's details if found, or a 404 error if not found.
+            
+        Raises:
+            500 error if there is an issue retrieving the user from the database.
+        """
+        app.logger.info('Fetching user with ID: %d', user_id)
+        try:
+            user = User.get_user_by_id(user_id)  # Ensure this method exists in your User model
+            if user is None:
+                app.logger.warning("User not found for ID: %d", user_id)
+                return make_response(jsonify({'error': 'User not found'}), 404)
+
+            user_data = {
+                'id': user.id,
+                'username': user.username
+            }
+
+            return make_response(jsonify(user_data), 200)
+        except Exception as e:
+            app.logger.error("Failed to fetch user: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
 
     @app.route('/api/delete-user', methods=['DELETE'])
@@ -156,7 +222,6 @@ def create_app(config_class=ProductionConfig):
             # Get user ID
             user_id = User.get_id_by_username(username)
 
-
             app.logger.info("User %s logged in successfully.", username)
             return jsonify({"message": f"User {username} logged in successfully."}), 200
 
@@ -192,9 +257,6 @@ def create_app(config_class=ProductionConfig):
         try:
             # Get user ID
             user_id = User.get_id_by_username(username)
-
-            # Save user's combatants and clear the battle model
-            MongoSessionModel.logout_user(user_id, battle_model)
 
             app.logger.info("User %s logged out successfully.", username)
             return jsonify({"message": f"User {username} logged out successfully."}), 200
@@ -325,7 +387,7 @@ def create_app(config_class=ProductionConfig):
         try:
             app.logger.info(f"Retrieving country by ID: {country_id}")
 
-            meal = Country.get_country_by_id(country_id)
+            country = Country.get_country_by_id(country_id)
             return make_response(jsonify({'status': 'success', 'country': country}), 200)
         except Exception as e:
             app.logger.error(f"Error retrieving country by ID: {e}")

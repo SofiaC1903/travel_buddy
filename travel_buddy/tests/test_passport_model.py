@@ -1,6 +1,6 @@
 import pytest
-from travel_buddy.travel_buddy.models.passport_model import PassportModel
-from travel_buddy.travel_buddy.models.country_model import Country
+from ..travel_buddy.models.passport_model import PassportModel
+from ..travel_buddy.models.country_model import Country
 
 @pytest.fixture
 def mock_passport_model(mocker):

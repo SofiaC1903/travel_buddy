@@ -2,7 +2,7 @@ import pytest
 
 from sqlalchemy.exc import IntegrityError
 
-from travel_buddy.travel_buddy.models.user_model import User
+from ..travel_buddy.models.user_model import User
 
 
 @pytest.fixture

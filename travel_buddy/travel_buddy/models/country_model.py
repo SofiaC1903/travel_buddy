@@ -1,14 +1,14 @@
 from dataclasses import asdict, dataclass
 import logging
-import travel_buddy.travel_buddy.country as info
+import travel_buddy.country as info
 from typing import Any, List
 
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import validates
 
-from travel_buddy.travel_buddy.db import db
-from travel_buddy.travel_buddy.utils.logger import configure_logger
+from ..db import db
+from ..utils.logger import configure_logger
 
 
 logger = logging.getLogger(__name__)

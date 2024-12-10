@@ -1,5 +1,5 @@
 import pytest
-from travel_buddy.travel_buddy.models.country_model import Country
+from ..travel_buddy.models.country_model import Country
 from sqlalchemy.exc import IntegrityError
 
 

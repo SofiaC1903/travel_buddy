@@ -2,7 +2,7 @@ import pytest
 
 from ..app import create_app
 from ..config import TestConfig
-from travel_buddy.travel_buddy.db import db
+from ..travel_buddy.db import db
 from unittest.mock import MagicMock
 
 @pytest.fixture

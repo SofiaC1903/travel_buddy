@@ -1,7 +1,7 @@
 import pytest
 import requests
 
-from travel_buddy.utils.random_utils import get_random
+from ..travel_buddy.utils.random_utils import get_random
 
 
 RANDOM_NUMBER = 0.42

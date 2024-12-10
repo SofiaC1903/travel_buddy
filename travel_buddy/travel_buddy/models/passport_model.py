@@ -1,9 +1,9 @@
 import logging
 import os
 from typing import Any, List
-from travel_buddy.travel_buddy.utils.logger import configure_logger
-from travel_buddy.travel_buddy.models.country_model import Country
-from travel_buddy.travel_buddy.db import db
+from ..utils.logger import configure_logger
+from .country_model import Country
+from ..db import db
 
 logger = logging.getLogger(__name__)
 configure_logger(logger)
