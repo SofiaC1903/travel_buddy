@@ -213,38 +213,3 @@ class Country(db.Model):
             "countrycode": country.countrycode,
             "deleted": country.deleted
         }
-
-def update_cache_for_country(mapper, connection, target):
-    """
-    Update the Redis cache for a country entry after a delete operation.
-
-    This function is intended to be used as an SQLAlchemy event listener for the
-    `after_delete` events on the Country model. When a country is
-    deleted, this function will remove the entry if the meal has
-    been marked as deleted.
-
-    Args:
-        mapper (Mapper): The SQLAlchemy Mapper object, which provides information
-                        about the model being updated (automatically passed by SQLAlchemy).
-        connection (Connection): The SQLAlchemy Connection object used for the
-                                database operation (automatically passed by SQLAlchemy).
-        target (Country): The instance of the Country model that was deleted.
-                        The `target` object contains the updated country data.
-
-    Side-effects:
-        - If the country is marked as deleted (`target.deleted` is True), the function
-        removes the corresponding cache entry from Redis.
-        - If the meal is not marked as deleted, the function updates the Redis cache
-        entry with the latest country data using the `hset` command.
-    """
-    cache_key = f"country:{target.id}"
-    if target.deleted:  # Soft delete logic
-        redis_client.delete(cache_key)
-    else:
-        redis_client.hset(
-            cache_key,
-            mapping={k: str(v) for k, v in asdict(target).items()}
-        )
-
-# Register the listener for delete events
-event.listen(Country, 'after_delete', update_cache_for_country)

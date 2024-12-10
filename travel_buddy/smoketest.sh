@@ -277,28 +277,13 @@ delete_user() {
 
 
 # Run all the steps in orderchmod +x smoketest.sh
+check_health
+init_db
 create_user
 check_user_password
 update_user_password
 check_user_password
 delete_user
 
-check_health
-init_db
-create_meal
-clear_combatants
-prep_combatant
-prep_combatant
-get_combatants
-run_battle
-prep_combatant
-run_battle
-prep_combatant
-run_battle
-get_leaderboard_wins
-get_leaderboard_win_pct
-get_meal_by_name
-get_meal_by_id
-delete_meal_by_id
 
 echo "All tests passed successfully!"

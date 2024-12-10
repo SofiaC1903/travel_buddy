@@ -3,12 +3,12 @@ from flask import Flask, jsonify, make_response, Response, request
 from werkzeug.exceptions import BadRequest, Unauthorized
 # from flask_cors import CORS
 
-from config import ProductionConfig
-from travel_buddy.db import db
-from travel_buddy.models.country_model import Country
-from travel_buddy.models.passport_model import PassportModel
-from travel_buddy.models.mongo_session_model import MongoSessionModel
-from travel_buddy.models.user_model import User
+from travel_buddy.config import ProductionConfig
+from travel_buddy.travel_buddy.db import db
+from travel_buddy.travel_buddy.models.country_model import Country
+from travel_buddy.travel_buddy.models.passport_model import PassportModel
+from travel_buddy.travel_buddy.models.mongo_session_model import MongoSessionModel
+from travel_buddy.travel_buddy.models.user_model import User
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,6 +20,9 @@ def create_app(config_class=ProductionConfig):
     db.init_app(app)  # Initialize db with app
     with app.app_context():
         db.create_all()  # Recreate all tables
+
+    from travel_buddy.travel_buddy.country import country_bp
+    app.register_blueprint(country_bp)
 
     country_model = Country()
 
@@ -416,6 +419,8 @@ def create_app(config_class=ProductionConfig):
         except Exception as e:
             app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
+        
+    return app
 
 if __name__ == '__main__':
     app = create_app()

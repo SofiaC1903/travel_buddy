@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 @pytest.fixture
 def app():
     app = create_app(TestConfig)
+    print(app)  # Debug: Print the app instance
     with app.app_context():
         db.create_all()
         yield app
@@ -22,7 +23,6 @@ def client(app):
 def session(app):
     with app.app_context():
         yield db.session
-
 
 @pytest.fixture
 def mock_redis(mocker):

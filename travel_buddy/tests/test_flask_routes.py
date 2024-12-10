@@ -1,14 +1,4 @@
 import pytest
-from test_app import app
-
-
-@pytest.fixture
-def client():
-    """
-    Set up the Flask test client.
-    """
-    with app.test_client() as client:
-        yield client
 
 def test_country_language_route(client):
     """
