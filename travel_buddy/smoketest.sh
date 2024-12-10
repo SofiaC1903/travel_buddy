@@ -218,8 +218,71 @@ init_db() {
 }
 
 
+###############################################
+#
+# User Tests
+#
+###############################################
 
-# Run all the steps in order
+# Function to create a user
+create_user() {
+  echo "Creating a new user (username: testuser)..."
+  response=$(curl -s -X POST "$BASE_URL/create-user" -H "Content-Type: application/json" \
+    -d '{"username":"testuser", "password":"password123"}')
+  if echo "$response" | grep -q '"status": "user created"'; then
+    echo "User created successfully."
+  else
+    echo "Failed to create user."
+    exit 1
+  fi
+}
+
+# Function to check a user's password
+check_user_password() {
+  echo "Checking password for user (username: testuser)..."
+  response=$(curl -s -X POST "$BASE_URL/check-password" -H "Content-Type: application/json" \
+    -d '{"username":"testuser", "password":"password123"}')
+  if echo "$response" | grep -q '"status": "password correct"'; then
+    echo "Password verified successfully."
+  else
+    echo "Password verification failed."
+    exit 1
+  fi
+}
+
+# Function to update a user's password
+update_user_password() {
+  echo "Updating password for user (username: testuser)..."
+  response=$(curl -s -X POST "$BASE_URL/update-password" -H "Content-Type: application/json" \
+    -d '{"username":"testuser", "new_password":"newpassword456"}')
+  if echo "$response" | grep -q '"status": "password updated"'; then
+    echo "Password updated successfully."
+  else
+    echo "Failed to update password."
+    exit 1
+  fi
+}
+
+# Function to delete a user
+delete_user() {
+  echo "Deleting user (username: testuser)..."
+  response=$(curl -s -X DELETE "$BASE_URL/delete-user/testuser")
+  if echo "$response" | grep -q '"status": "user deleted"'; then
+    echo "User deleted successfully."
+  else
+    echo "Failed to delete user."
+    exit 1
+  fi
+}
+
+
+# Run all the steps in orderchmod +x smoketest.sh
+create_user
+check_user_password
+update_user_password
+check_user_password
+delete_user
+
 check_health
 init_db
 create_meal
