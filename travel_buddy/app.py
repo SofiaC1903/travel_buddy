@@ -5,8 +5,8 @@ from werkzeug.exceptions import BadRequest, Unauthorized
 
 from config import ProductionConfig
 from travel_buddy.db import db
-from travel_buddy.models.battle_model import BattleModel
-from travel_buddy.models.kitchen_model import Meals
+from travel_buddy.models.country_model import Country
+from travel_buddy.models.passport_model import PassportModel
 from travel_buddy.models.mongo_session_model import MongoSessionModel
 from travel_buddy.models.user_model import User
 
@@ -21,7 +21,7 @@ def create_app(config_class=ProductionConfig):
     with app.app_context():
         db.create_all()  # Recreate all tables
 
-    battle_model = BattleModel()
+    country_model = Country()
 
     ####################################################
     #
@@ -208,124 +208,128 @@ def create_app(config_class=ProductionConfig):
 
     ##########################################################
     #
-    # Meals
+    # Countries
     #
     ##########################################################
 
 
-    @app.route('/api/create-meal', methods=['POST'])
-    def add_meal() -> Response:
+    @app.route('/api/create-country', methods=['POST'])
+    def add_country() -> Response:
         """
-        Route to add a new meal to the database.
+        Route to add a new country to the database.
 
         Expected JSON Input:
-            - meal (str): The name of the combatant (meal).
-            - cuisine (str): The cuisine type of the combatant (e.g., Italian, Chinese).
-            - price (float): The price of the combatant.
-            - difficulty (str): The preparation difficulty (HIGH, MED, LOW).
+            - country (str): The name of the country (country).
+            - capital (str): The capital of the country (e.g., Berlin, Oslo, Panama City).
+            - languages (float): The languages of a country (e.g., English, Spanish, French, etc.).
+            - currency (str): The currency used by a countery (e.g., Euro, USD, Pound, etc.).
+            - region(str):  The region/continent a country belongs to. (e.g., Asia, Africa, Europe, etc.).
+            - country code(str): The country code in CCA2 format for a country. (e.g., 'PA', 'US', 'JM')
 
         Returns:
-            JSON response indicating the success of the combatant addition.
+            JSON response indicating the success of the country addition.
         Raises:
             400 error if input validation fails.
-            500 error if there is an issue adding the combatant to the database.
+            500 error if there is an issue adding the country to the database.
         """
-        app.logger.info('Creating new meal')
+        app.logger.info('Creating new country')
         try:
             # Get the JSON data from the request
             data = request.get_json()
 
             # Extract and validate required fields
-            meal = data.get('meal')
-            cuisine = data.get('cuisine')
-            price = data.get('price')
-            difficulty = data.get('difficulty')
+            country = data.get('name')
+            capital = data.get('capital')
+            languages = data.get('languages')
+            currency = data.get('currency')
+            region = data.get('region')
+            countrycode = data.get('alpha2_code')
 
-            if not meal or not cuisine or price is None or difficulty not in ['HIGH', 'MED', 'LOW']:
+
+            if not country or not capital or not languages or not currency or region not in ['Africa','Americas', 'Asia', 'Europe','Oceania'] or not countrycode:
                 raise BadRequest("Invalid input. All fields are required with valid values.")
 
-            # Check that price is a float and has at most two decimal places
+            # Check that country code is only two letters long
             try:
-                price = float(price)
-                if round(price, 2) != price:
-                    raise ValueError("Price has more than two decimal places")
+                if len(countrycode) != 2:
+                    raise ValueError("Country code is longer than two letters.")
             except ValueError as e:
-                return make_response(jsonify({'error': 'Price must be a valid float with at most two decimal places'}), 400)
+                return make_response(jsonify({'error': 'Country code must be a valid string with at most two letters'}), 400)
 
-            # Call the Meals function to add the combatant to the database
-            app.logger.info('Adding meal: %s, %s, %.2f, %s', meal, cuisine, price, difficulty)
-            Meals.create_meal(meal, cuisine, price, difficulty)
+            # Call the Country function to add the country to the database
+            app.logger.info('Adding country: %s, %s, %s, %s, %s, %.2s', country, capital, languages, currency, region, countrycode)
+            Country.create_country(country, capital, languages, currency, region, countrycode)
 
-            app.logger.info("Combatant added: %s", meal)
-            return make_response(jsonify({'status': 'combatant added', 'combatant': meal}), 201)
+            app.logger.info("Country added: %s", country)
+            return make_response(jsonify({'status': 'country added', 'country': country}), 201)
         except Exception as e:
-            app.logger.error("Failed to add combatant: %s", str(e))
+            app.logger.error("Failed to add country: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
 
 
-    @app.route('/api/delete-meal/<int:meal_id>', methods=['DELETE'])
-    def delete_meal(meal_id: int) -> Response:
+    @app.route('/api/delete-country/<int:country_id>', methods=['DELETE'])
+    def delete_country(country_id: int) -> Response:
         """
-        Route to delete a meal by its ID. This performs a soft delete by marking it as deleted.
+        Route to delete a country by its ID. This performs a soft delete by marking it as deleted.
 
         Path Parameter:
-            - meal_id (int): The ID of the meal to delete.
+            - country_id (int): The ID of the country to delete.
 
         Returns:
             JSON response indicating success of the operation or error message.
         """
         try:
-            app.logger.info(f"Deleting meal by ID: {meal_id}")
+            app.logger.info(f"Deleting country by ID: {country_id}")
 
-            Meals.delete_meal(meal_id)
-            return make_response(jsonify({'status': 'meal deleted'}), 200)
+            Country.delete_country(country_id)
+            return make_response(jsonify({'status': 'country deleted'}), 200)
         except Exception as e:
-            app.logger.error(f"Error deleting meal: {e}")
+            app.logger.error(f"Error deleting country: {e}")
             return make_response(jsonify({'error': str(e)}), 500)
 
 
-    @app.route('/api/get-meal-by-id/<int:meal_id>', methods=['GET'])
-    def get_meal_by_id(meal_id: int) -> Response:
+    @app.route('/api/get-country-by-id/<int:country_id>', methods=['GET'])
+    def get_country_by_id(country_id: int) -> Response:
         """
-        Route to get a meal by its ID.
+        Route to get a country by its ID.
 
         Path Parameter:
-            - meal_id (int): The ID of the meal.
+            - country_id (int): The ID of the country.
 
         Returns:
-            JSON response with the meal details or error message.
+            JSON response with the country details or error message.
         """
         try:
-            app.logger.info(f"Retrieving meal by ID: {meal_id}")
+            app.logger.info(f"Retrieving country by ID: {country_id}")
 
-            meal = Meals.get_meal_by_id(meal_id)
-            return make_response(jsonify({'status': 'success', 'meal': meal}), 200)
+            meal = Country.get_country_by_id(country_id)
+            return make_response(jsonify({'status': 'success', 'country': country}), 200)
         except Exception as e:
-            app.logger.error(f"Error retrieving meal by ID: {e}")
+            app.logger.error(f"Error retrieving country by ID: {e}")
             return make_response(jsonify({'error': str(e)}), 500)
 
 
-    @app.route('/api/get-meal-by-name/<string:meal_name>', methods=['GET'])
-    def get_meal_by_name(meal_name: str) -> Response:
+    @app.route('/api/get-country-by-name/<string:country_name>', methods=['GET'])
+    def get_country_by_name(country_name: str) -> Response:
         """
-        Route to get a meal by its name.
+        Route to get a country by its name.
 
         Path Parameter:
-            - meal_name (str): The name of the meal.
+            - country_name (str): The name of the country.
 
         Returns:
-            JSON response with the meal details or error message.
+            JSON response with the country details or error message.
         """
         try:
-            app.logger.info(f"Retrieving meal by name: {meal_name}")
+            app.logger.info(f"Retrieving country by name: {country_name}")
 
-            if not meal_name:
-                return make_response(jsonify({'error': 'Meal name is required'}), 400)
+            if not country_name:
+                return make_response(jsonify({'error': 'Country name is required'}), 400)
 
-            meal = Meals.get_meal_by_name(meal_name)
-            return make_response(jsonify({'status': 'success', 'meal': meal}), 200)
+            country = Country.get_country_by_name(country_name)
+            return make_response(jsonify({'status': 'success', 'country': country}), 200)
         except Exception as e:
-            app.logger.error(f"Error retrieving meal by name: {e}")
+            app.logger.error(f"Error retrieving country by name: {e}")
             return make_response(jsonify({'error': str(e)}), 500)
 
 
@@ -358,7 +362,7 @@ def create_app(config_class=ProductionConfig):
 
     ############################################################
     #
-    # Battle
+    # Passport
     #
     ############################################################
 
