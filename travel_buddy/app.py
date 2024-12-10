@@ -405,7 +405,7 @@ def create_app(config_class=ProductionConfig):
     ############################################################
 
     @app.route('/api/get-country-by-capital', methods=['GET'])
-    def get_country_by_capital() -> Response:
+    def get_country_by_capital(capital) -> Response:
         """
         Route to get the a country by its capital.
 
@@ -414,14 +414,78 @@ def create_app(config_class=ProductionConfig):
         """
         try:
             app.logger.info('Getting country by its capital...')
-            country = PassportModel.get_country_by_capital()
-            return make_response(jsonify({'status': 'success', 'countries': countries}), 200)
+            country = PassportModel.get_country_by_capital(capital)
+            return make_response(jsonify({'status': 'success', 'country': country}), 200)
+        except Exception as e:
+            app.logger.error("Failed to get country: %s", str(e))
+            return make_response(jsonify({'error': str(e)}), 500)
+        
+    @app.route('/api/get-country-by-code', methods=['GET'])
+    def get_country_by_code(countrycode) -> Response:
+        """
+        Route to get the a country by its code.
+
+        Returns:
+            JSON response with the country.
+        """
+        try:
+            app.logger.info('Getting country by its code...')
+            country = PassportModel.get_country_by_code(countrycode)
+            return make_response(jsonify({'status': 'success', 'country': country}), 200)
+        except Exception as e:
+            app.logger.error("Failed to get country: %s", str(e))
+            return make_response(jsonify({'error': str(e)}), 500)
+
+    @app.route('/api/get-countries-by-language', methods=['GET'])
+    def get_countries_by_language(language) -> Response:
+        """
+        Route to get the countries that speak a given language.
+
+        Returns:
+            JSON response with the country.
+        """
+        try:
+            app.logger.info('Getting countries by their language...')
+            country = PassportModel.get_countries_by_language(language)
+            return make_response(jsonify({'status': 'success', 'countries': country}), 200)
+        except Exception as e:
+            app.logger.error("Failed to get countries: %s", str(e))
+            return make_response(jsonify({'error': str(e)}), 500)
+    
+    @app.route('/api/get-countries-by-currency', methods=['GET'])
+    def get_countries_by_currency(currency) -> Response:
+        """
+        Route to get the countries that use a given currency.
+
+        Returns:
+            JSON response with the country.
+        """
+        try:
+            app.logger.info('Getting countries by their currency...')
+            country = PassportModel.get_countries_by_currency(currency)
+            return make_response(jsonify({'status': 'success', 'countries': country}), 200)
         except Exception as e:
             app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
         
     return app
 
+    @app.route('/api/get-countries-by-region', methods=['GET'])
+    def get_countries_by_region(region) -> Response:
+        """
+        Route to get the countries that belong to a given region.
+
+        Returns:
+            JSON response with the country.
+        """
+        try:
+            app.logger.info('Getting countries by their region...')
+            country = PassportModel.get_countries_by_region(region)
+            return make_response(jsonify({'status': 'success', 'countries': country}), 200)
+        except Exception as e:
+            app.logger.error("Failed to get countries: %s", str(e))
+            return make_response(jsonify({'error': str(e)}), 500)
+        
 if __name__ == '__main__':
     app = create_app()
     app.run(debug=True, host='0.0.0.0', port=5000)
