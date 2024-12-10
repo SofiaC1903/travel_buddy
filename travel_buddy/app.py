@@ -451,7 +451,7 @@ def create_app(config_class=ProductionConfig):
     #
     ############################################################
 
-    @app.route('/api/get-country-by-capital', methods=['GET'])
+    @app.route('/api/get-country-by-capital/<string:capital>', methods=['GET'])
     def get_country_by_capital(capital) -> Response:
         """
         Route to get the a country by its capital.
@@ -467,7 +467,7 @@ def create_app(config_class=ProductionConfig):
             app.logger.error("Failed to get country: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
         
-    @app.route('/api/get-country-by-code', methods=['GET'])
+    @app.route('/api/get-country-by-code/<string:countrycode>', methods=['GET'])
     def get_country_by_code(countrycode) -> Response:
         """
         Route to get the a country by its code.
@@ -483,7 +483,7 @@ def create_app(config_class=ProductionConfig):
             app.logger.error("Failed to get country: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
 
-    @app.route('/api/get-countries-by-language', methods=['GET'])
+    @app.route('/api/get-countries-by-language/<string:language>', methods=['GET'])
     def get_countries_by_language(language) -> Response:
         """
         Route to get the countries that speak a given language.
@@ -499,7 +499,7 @@ def create_app(config_class=ProductionConfig):
             app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
     
-    @app.route('/api/get-countries-by-currency', methods=['GET'])
+    @app.route('/api/get-countries-by-currency/<string:currency>', methods=['GET'])
     def get_countries_by_currency(currency) -> Response:
         """
         Route to get the countries that use a given currency.
@@ -514,8 +514,8 @@ def create_app(config_class=ProductionConfig):
         except Exception as e:
             app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-        
-    @app.route('/api/get-countries-by-region', methods=['GET'])
+
+    @app.route('/api/get-countries-by-region/<string:region>', methods=['GET'])
     def get_countries_by_region(region) -> Response:
         """
         Route to get the countries that belong to a given region.
