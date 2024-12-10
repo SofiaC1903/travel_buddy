@@ -2,13 +2,13 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response, Response, request
 from werkzeug.exceptions import BadRequest, Unauthorized
 # from flask_cors import CORS
+from sqlalchemy.sql import text
 
 from config import ProductionConfig
-from meal_max.db import db
-from meal_max.models.battle_model import BattleModel
-from meal_max.models.kitchen_model import Meals
-from meal_max.models.mongo_session_model import MongoSessionModel
-from meal_max.models.user_model import User
+from travel_buddy.db import db
+from travel_buddy.models.country_model import Country
+from travel_buddy.models.passport_model import PassportModel
+from travel_buddy.models.user_model import User
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,7 +21,10 @@ def create_app(config_class=ProductionConfig):
     with app.app_context():
         db.create_all()  # Recreate all tables
 
-    battle_model = BattleModel()
+    from travel_buddy.country import country_bp
+    app.register_blueprint(country_bp)
+
+    country_model = Country()
 
     ####################################################
     #
@@ -40,6 +43,15 @@ def create_app(config_class=ProductionConfig):
         """
         app.logger.info('Health check')
         return make_response(jsonify({'status': 'healthy'}), 200)
+    
+    
+    @app.route('/api/db-check', methods=['GET'])
+    def db_check():
+        try:
+            db.session.execute(text('SELECT 1'))
+            return jsonify({'database_status': 'healthy'}),  200
+        except Exception as e:
+            return jsonify({'database_status': 'unhealthy', 'error': str(e)}), 500
 
     ##########################################################
     #
@@ -47,7 +59,7 @@ def create_app(config_class=ProductionConfig):
     #
     ##########################################################
 
-    @app.route('/api/create-user', methods=['POST'])
+    @app.route('/api/create-account', methods=['POST'])
     def create_user() -> Response:
         """
         Route to create a new user.
@@ -83,7 +95,7 @@ def create_app(config_class=ProductionConfig):
         except Exception as e:
             app.logger.error("Failed to add user: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-
+        
     @app.route('/api/delete-user', methods=['DELETE'])
     def delete_user() -> Response:
         """
@@ -118,11 +130,11 @@ def create_app(config_class=ProductionConfig):
         except Exception as e:
             app.logger.error("Failed to delete user: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-
-    @app.route('/login', methods=['POST'])
+        
+    @app.route('/api/login', methods=['POST'])
     def login():
         """
-        Route to log in a user and load their combatants.
+        Route to log in a user.
 
         Expected JSON Input:
             - username (str): The username of the user.
@@ -136,196 +148,181 @@ def create_app(config_class=ProductionConfig):
             401 error if authentication fails (invalid username or password).
             500 error for any unexpected server-side issues.
         """
-        data = request.get_json()
-        if not data or 'username' not in data or 'password' not in data:
-            app.logger.error("Invalid request payload for login.")
-            raise BadRequest("Invalid request payload. 'username' and 'password' are required.")
-
-        username = data['username']
-        password = data['password']
-
         try:
+            # Parse and validate input
+            data = request.get_json()
+            if not data or 'username' not in data or 'password' not in data:
+                app.logger.error("Invalid request payload for login.")
+                return jsonify({"error": "Invalid request payload. 'username' and 'password' are required."}), 400
+
+            username = data['username'].strip()
+            password = data['password']
+
             # Validate user credentials
-            if not User.check_password(username, password):
-                app.logger.warning("Login failed for username: %s", username)
-                raise Unauthorized("Invalid username or password.")
-
-            # Get user ID
-            user_id = User.get_id_by_username(username)
-
-            # Load user's combatants into the battle model
-            MongoSessionModel.login_user(user_id, battle_model)
-
-            app.logger.info("User %s logged in successfully.", username)
-            return jsonify({"message": f"User {username} logged in successfully."}), 200
-
-        except Unauthorized as e:
-            return jsonify({"error": str(e)}), 401
-        except Exception as e:
-            app.logger.error("Error during login for username %s: %s", username, str(e))
-            return jsonify({"error": "An unexpected error occurred."}), 500
-
-
-    @app.route('/logout', methods=['POST'])
-    def logout():
-        """
-        Route to log out a user and save their combatants to MongoDB.
-
-        Expected JSON Input:
-            - username (str): The username of the user.
-
-        Returns:
-            JSON response indicating the success of the logout.
-
-        Raises:
-            400 error if input validation fails or user is not found in MongoDB.
-            500 error for any unexpected server-side issues.
-        """
-        data = request.get_json()
-        if not data or 'username' not in data:
-            app.logger.error("Invalid request payload for logout.")
-            raise BadRequest("Invalid request payload. 'username' is required.")
-
-        username = data['username']
-
-        try:
-            # Get user ID
-            user_id = User.get_id_by_username(username)
-
-            # Save user's combatants and clear the battle model
-            MongoSessionModel.logout_user(user_id, battle_model)
-
-            app.logger.info("User %s logged out successfully.", username)
-            return jsonify({"message": f"User {username} logged out successfully."}), 200
+            if User.check_password(username, password):
+                app.logger.info("User %s logged in successfully.", username)
+                return jsonify({"message": f"User {username} logged in successfully."}), 200
+            else:
+                app.logger.warning("Invalid credentials for username: %s", username)
+                return jsonify({"error": "Invalid username or password."}), 401
 
         except ValueError as e:
-            app.logger.warning("Logout failed for username %s: %s", username, str(e))
-            return jsonify({"error": str(e)}), 400
+            app.logger.warning("Login failed: %s", str(e))
+            return jsonify({"error": str(e)}), 401
         except Exception as e:
-            app.logger.error("Error during logout for username %s: %s", username, str(e))
+            app.logger.error("Unexpected error during login: %s", str(e))
             return jsonify({"error": "An unexpected error occurred."}), 500
 
 
     ##########################################################
     #
-    # Meals
+    # Countries
     #
     ##########################################################
 
-
-    @app.route('/api/create-meal', methods=['POST'])
-    def add_meal() -> Response:
+    @app.route('/api/create-country', methods=['POST'])
+    def add_country() -> Response:
         """
-        Route to add a new meal to the database.
-
-        Expected JSON Input:
-            - meal (str): The name of the combatant (meal).
-            - cuisine (str): The cuisine type of the combatant (e.g., Italian, Chinese).
-            - price (float): The price of the combatant.
-            - difficulty (str): The preparation difficulty (HIGH, MED, LOW).
-
-        Returns:
-            JSON response indicating the success of the combatant addition.
-        Raises:
-            400 error if input validation fails.
-            500 error if there is an issue adding the combatant to the database.
+        Route to add a new country to the database.
         """
-        app.logger.info('Creating new meal')
+        app.logger.info('Creating new country')
+
         try:
-            # Get the JSON data from the request
+            # Get JSON data from the request
             data = request.get_json()
 
-            # Extract and validate required fields
-            meal = data.get('meal')
-            cuisine = data.get('cuisine')
-            price = data.get('price')
-            difficulty = data.get('difficulty')
+            # Validate required fields
+            required_fields = ['country', 'capital', 'languages', 'currency', 'region', 'country_code']
+            missing_fields = [field for field in required_fields if field not in data or not data[field]]
+            if missing_fields:
+                return make_response(jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400)
 
-            if not meal or not cuisine or price is None or difficulty not in ['HIGH', 'MED', 'LOW']:
-                raise BadRequest("Invalid input. All fields are required with valid values.")
+            # # Normalize and validate the region
+            # region = data['region'].strip()
+            # valid_regions = ['Africa', 'Americas', 'Asia', 'Europe', 'Oceania']
+            # app.logger.info("Valid regions: %s", repr(valid_regions))
+            # app.logger.info("what is going on: %s", valid_regions[0], region)
+            # app.logger.info("Is region valid? %s", region not in valid_regions)
+            # app.logger.info("Region bytes: %s", list(region.encode()))
+            # app.logger.info("Valid region bytes (Africa): %s", list('Africa'.encode()))
 
-            # Check that price is a float and has at most two decimal places
-            try:
-                price = float(price)
-                if round(price, 2) != price:
-                    raise ValueError("Price has more than two decimal places")
-            except ValueError as e:
-                return make_response(jsonify({'error': 'Price must be a valid float with at most two decimal places'}), 400)
+            # if region not in valid_regions:
+            #     return make_response(jsonify({'error': f"Region must be one of: {', '.join(valid_regions)}"}), 400)
 
-            # Call the Meals function to add the combatant to the database
-            app.logger.info('Adding meal: %s, %s, %.2f, %s', meal, cuisine, price, difficulty)
-            Meals.create_meal(meal, cuisine, price, difficulty)
+            # Validate the country code length
+            if len(data['country_code']) > 2:
+                return make_response(jsonify({'error': "Country code must be in CCA2 format (2 characters)."}), 400)
 
-            app.logger.info("Combatant added: %s", meal)
-            return make_response(jsonify({'status': 'combatant added', 'combatant': meal}), 201)
+            # Add the country using the model's create_country method
+            Country.create_country(data['country'])
+
+            app.logger.info("Country added successfully: %s", data['country'])
+            return make_response(jsonify({'status': 'country added', 'country': data['country']}), 201)
+
+        except ValueError as ve:
+            app.logger.error("Validation error: %s", str(ve))
+            return make_response(jsonify({'error': str(ve)}), 400)
         except Exception as e:
-            app.logger.error("Failed to add combatant: %s", str(e))
-            return make_response(jsonify({'error': str(e)}), 500)
+            app.logger.error("Unexpected error: %s", str(e))
+            return make_response(jsonify({'error': 'An unexpected error occurred.'}), 500)
 
 
-    @app.route('/api/delete-meal/<int:meal_id>', methods=['DELETE'])
-    def delete_meal(meal_id: int) -> Response:
+    @app.route('/api/delete-country/<int:country_id>', methods=['DELETE'])
+    def delete_country(country_id: int) -> Response:
         """
-        Route to delete a meal by its ID. This performs a soft delete by marking it as deleted.
+        Route to delete a country by its ID. This performs a soft delete by marking it as deleted.
 
         Path Parameter:
-            - meal_id (int): The ID of the meal to delete.
+            - country_id (int): The ID of the country to delete.
 
         Returns:
             JSON response indicating success of the operation or error message.
         """
         try:
-            app.logger.info(f"Deleting meal by ID: {meal_id}")
+            app.logger.info(f"Deleting country by ID: {country_id}")
 
-            Meals.delete_meal(meal_id)
-            return make_response(jsonify({'status': 'meal deleted'}), 200)
+            Country.delete_country(country_id)
+            return make_response(jsonify({'status': 'country deleted'}), 200)
         except Exception as e:
-            app.logger.error(f"Error deleting meal: {e}")
+            app.logger.error(f"Error deleting country: {e}")
+            return make_response(jsonify({'error': str(e)}), 500)
+
+    @app.route('/api/clear-countries', methods=['POST'])
+    def clear_countries():
+        """
+        Route to clear the list of countries entered by the user.
+
+        Returns:
+            JSON response indicating success of the operation.
+            Raises a 500 error if there is an issue clearing countries.
+        """
+        try:
+            app.logger.info('Clearing all countries...')
+            Country.clear_countries()  # Call the class method
+            app.logger.info('Countries cleared.')
+            return make_response(jsonify({'status': 'countries cleared'}), 200)
+        except Exception as e:
+            app.logger.error("Failed to clear countries: %s", str(e))
+            return make_response(jsonify({'error': str(e)}), 500)
+        
+    @app.route('/api/get-countries', methods=['GET'])
+    def get_countries() -> Response:
+        """
+        Route to get the list of countries entered by user.
+
+        Returns:
+            JSON response with the list of countries.
+        """
+        try:
+            app.logger.info('Getting countries...')
+            countries = Country.get_countries()
+            return make_response(jsonify({'status': 'success', 'countries': countries}), 200)
+        except Exception as e:
+            app.logger.error("Failed to get countries: %s", str(e))
+            return make_response(jsonify({'error': str(e)}), 500)
+        
+    @app.route('/api/get-country-by-id/<int:country_id>', methods=['GET'])
+    def get_country_by_id(country_id: int) -> Response:
+        """
+        Route to get a country by its ID.
+
+        Path Parameter:
+            - country_id (int): The ID of the country.
+
+        Returns:
+            JSON response with the country details or error message.
+        """
+        try:
+            app.logger.info(f"Retrieving country by ID: {country_id}")
+
+            country = Country.get_country_by_id(country_id)
+            return make_response(jsonify({'status': 'success', 'country': country}), 200)
+        except Exception as e:
+            app.logger.error(f"Error retrieving country by ID: {e}")
             return make_response(jsonify({'error': str(e)}), 500)
 
 
-    @app.route('/api/get-meal-by-id/<int:meal_id>', methods=['GET'])
-    def get_meal_by_id(meal_id: int) -> Response:
+    @app.route('/api/get-country-by-name/<string:country_name>', methods=['GET'])
+    def get_country_by_name(country_name: str) -> Response:
         """
-        Route to get a meal by its ID.
+        Route to get a country by its name.
 
         Path Parameter:
-            - meal_id (int): The ID of the meal.
+            - country_name (str): The name of the country.
 
         Returns:
-            JSON response with the meal details or error message.
+            JSON response with the country details or error message.
         """
         try:
-            app.logger.info(f"Retrieving meal by ID: {meal_id}")
+            app.logger.info(f"Retrieving country by name: {country_name}")
 
-            meal = Meals.get_meal_by_id(meal_id)
-            return make_response(jsonify({'status': 'success', 'meal': meal}), 200)
+            if not country_name:
+                return make_response(jsonify({'error': 'Country name is required'}), 400)
+
+            country = Country.get_country_by_name(country_name)
+            return make_response(jsonify({'status': 'success', 'country': country}), 200)
         except Exception as e:
-            app.logger.error(f"Error retrieving meal by ID: {e}")
-            return make_response(jsonify({'error': str(e)}), 500)
-
-
-    @app.route('/api/get-meal-by-name/<string:meal_name>', methods=['GET'])
-    def get_meal_by_name(meal_name: str) -> Response:
-        """
-        Route to get a meal by its name.
-
-        Path Parameter:
-            - meal_name (str): The name of the meal.
-
-        Returns:
-            JSON response with the meal details or error message.
-        """
-        try:
-            app.logger.info(f"Retrieving meal by name: {meal_name}")
-
-            if not meal_name:
-                return make_response(jsonify({'error': 'Meal name is required'}), 400)
-
-            meal = Meals.get_meal_by_name(meal_name)
-            return make_response(jsonify({'status': 'success', 'meal': meal}), 200)
-        except Exception as e:
-            app.logger.error(f"Error retrieving meal by name: {e}")
+            app.logger.error(f"Error retrieving country by name: {e}")
             return make_response(jsonify({'error': str(e)}), 500)
 
 
@@ -358,136 +355,96 @@ def create_app(config_class=ProductionConfig):
 
     ############################################################
     #
-    # Battle
+    # Passport
     #
     ############################################################
 
-
-    @app.route('/api/battle', methods=['GET'])
-    def battle() -> Response:
+    @app.route('/api/get-country-by-capital/<string:capital>', methods=['GET'])
+    def get_country_by_capital(capital) -> Response:
         """
-        Route to initiate a battle between the two currently prepared meals.
+        Route to get the a country by its capital.
 
         Returns:
-            JSON response indicating the result of the battle and the winner.
-        Raises:
-            500 error if there is an issue during the battle.
+            JSON response with the country.
         """
         try:
-            app.logger.info('Two meals enter, one meal leaves!')
-
-            winner = battle_model.battle()
-
-            return make_response(jsonify({'status': 'battle complete', 'winner': winner}), 200)
+            app.logger.info('Getting country by its capital...')
+            passport = PassportModel()  
+            country = passport.get_country_by_capital(capital)
+            return make_response(jsonify({'status': 'success', 'country': country}), 200)
         except Exception as e:
-            app.logger.error(f"Battle error: {e}")
+            app.logger.error("Failed to get country: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-
-    @app.route('/api/clear-combatants', methods=['POST'])
-    def clear_combatants() -> Response:
+        
+    @app.route('/api/get-country-by-code/<string:countrycode>', methods=['GET'])
+    def get_country_by_code(countrycode) -> Response:
         """
-        Route to clear the list of combatants for the battle.
+        Route to get the a country by its code.
 
         Returns:
-            JSON response indicating success of the operation.
-        Raises:
-            500 error if there is an issue clearing combatants.
+            JSON response with the country.
         """
         try:
-            app.logger.info('Clearing all combatants...')
-            battle_model.clear_combatants()
-            app.logger.info('Combatants cleared.')
-            return make_response(jsonify({'status': 'combatants cleared'}), 200)
+            app.logger.info('Getting country by its code...')
+            passport = PassportModel()
+            country = passport.get_country_by_code(countrycode)
+            return make_response(jsonify({'status': 'success', 'country': country}), 200)
         except Exception as e:
-            app.logger.error("Failed to clear combatants: %s", str(e))
+            app.logger.error("Failed to get country: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
 
-    @app.route('/api/get-combatants', methods=['GET'])
-    def get_combatants() -> Response:
+    @app.route('/api/get-countries-by-language/<string:language>', methods=['GET'])
+    def get_countries_by_language(language) -> Response:
         """
-        Route to get the list of combatants for the battle.
+        Route to get the countries that speak a given language.
 
         Returns:
-            JSON response with the list of combatants.
+            JSON response with the country.
         """
         try:
-            app.logger.info('Getting combatants...')
-            combatants = battle_model.get_combatants()
-            return make_response(jsonify({'status': 'success', 'combatants': combatants}), 200)
+            app.logger.info('Getting countries by their language...')
+            passport = PassportModel()
+            country = passport.get_countries_by_language(language)
+            return make_response(jsonify({'status': 'success', 'countries': country}), 200)
         except Exception as e:
-            app.logger.error("Failed to get combatants: %s", str(e))
+            app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-
-    @app.route('/api/prep-combatant', methods=['POST'])
-    def prep_combatant() -> Response:
+    
+    @app.route('/api/get-countries-by-currency/<string:currency>', methods=['GET'])
+    def get_countries_by_currency(currency) -> Response:
         """
-        Route to prepare a prep a meal making it a combatant for a battle.
-
-        Parameters:
-            - meal (str): The name of the meal
+        Route to get the countries that use a given currency.
 
         Returns:
-            JSON response indicating the success of combatant preparation.
-        Raises:
-            500 error if there is an issue preparing combatants.
+            JSON response with the country.
         """
         try:
-            data = request.json
-            if not data or 'meal' not in data:
-                return make_response(jsonify({'error': 'Meal name is required'}), 400)
-            meal = data.get('meal')
-            app.logger.info("Preparing combatant: %s", meal)
-
-            if not meal:
-                raise BadRequest('You must name a combatant')
-
-            try:
-                meal = Meals.get_meal_by_name(meal)
-                battle_model.prep_combatant(meal)
-                combatants = battle_model.get_combatants()
-            except Exception as e:
-                app.logger.error("Failed to prepare combatant: %s", str(e))
-                return make_response(jsonify({'error': str(e)}), 500)
-            return make_response(jsonify({'status': 'combatant prepared', 'combatants': combatants}), 200)
-
+            app.logger.info('Getting countries by their currency...')
+            passport = PassportModel()
+            country = passport.get_countries_by_currency(currency)
+            return make_response(jsonify({'status': 'success', 'countries': country}), 200)
         except Exception as e:
-            app.logger.error("Failed to prepare combatants: %s", str(e))
+            app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
 
-
-    ############################################################
-    #
-    # Leaderboard
-    #
-    ############################################################
-
-
-    @app.route('/api/leaderboard', methods=['GET'])
-    def get_leaderboard() -> Response:
+    @app.route('/api/get-countries-by-region/<string:region>', methods=['GET'])
+    def get_countries_by_region(region) -> Response:
         """
-        Route to get the leaderboard of meals sorted by wins, battles, or win percentage.
-
-        Query Parameters:
-            - sort (str): The field to sort by ('wins', 'battles', or 'win_pct'). Default is 'wins'.
+        Route to get the countries that belong to a given region.
 
         Returns:
-            JSON response with a sorted leaderboard of meals.
-        Raises:
-            500 error if there is an issue generating the leaderboard.
+            JSON response with the country.
         """
         try:
-            sort_by = request.args.get('sort', 'wins')  # Default sort by wins
-            app.logger.info("Generating leaderboard sorted by %s", sort_by)
-
-            leaderboard_data = Meals.get_leaderboard(sort_by)
-
-            return make_response(jsonify({'status': 'success', 'leaderboard': leaderboard_data}), 200)
+            app.logger.info('Getting countries by their region...')
+            passport = PassportModel()
+            country = passport.get_countries_by_region(region)
+            return make_response(jsonify({'status': 'success', 'countries': country}), 200)
         except Exception as e:
-            app.logger.error(f"Error generating leaderboard: {e}")
+            app.logger.error("Failed to get countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-
+    
     return app
-
 
 if __name__ == '__main__':
     app = create_app()

@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . /app
 
 # Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Install SQLite3
 RUN apt-get update && apt-get install -y sqlite3
@@ -16,8 +16,11 @@ RUN apt-get update && apt-get install -y sqlite3
 # Define a volume for persisting the database
 VOLUME ["/app/db"]
 
+# Define environment variables
+ENV PYTHONPATH=/app
+
 # Make port 5000 available to the world outside this container
 EXPOSE 5000
 
 # Run the entrypoint script when the container launches
-CMD ["python", "app.py"]
+CMD ["python3", "app.py"]
