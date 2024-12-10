@@ -4,11 +4,11 @@ from werkzeug.exceptions import BadRequest, Unauthorized
 # from flask_cors import CORS
 
 from config import ProductionConfig
-from meal_max.db import db
-from meal_max.models.battle_model import BattleModel
-from meal_max.models.kitchen_model import Meals
-from meal_max.models.mongo_session_model import MongoSessionModel
-from meal_max.models.user_model import User
+from travel_buddy.db import db
+from travel_buddy.models.battle_model import BattleModel
+from travel_buddy.models.kitchen_model import Meals
+from travel_buddy.models.mongo_session_model import MongoSessionModel
+from travel_buddy.models.user_model import User
 
 # Load environment variables from .env file
 load_dotenv()
@@ -203,8 +203,7 @@ def create_app(config_class=ProductionConfig):
 
             # Change user's password
             app.logger.info('Changing user password: %s', username)
-            User.delete_user(username)
-            User.create_user(username, new_password)
+            User.update_password(username, new_password)
 
 
             app.logger.info("User %s password changed successfully.", username)
