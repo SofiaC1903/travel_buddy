@@ -1,5 +1,6 @@
 # travel_buddy
-
+### **What does the application do?**
+The Travel Buddy application implements the RESTful Countries API to help travelers manage countries they wish to travel to and gain information on the countries, like their language, currency, etc. The app also allows the users to filter countries by capital, language, currency, region or CCA2 code.
 ### **Routes Documentation**
 
 #### **1. Health Check**
@@ -323,7 +324,7 @@ Here’s a detailed breakdown of the routes in the required documentation format
     ```  
 
 #### **Route Name:** Get Country by Capital  
-- **Path:** `/api/get-country-by-capital`  
+- **Path:** `/api/get-country-by-capital/<str:capital>`  
 - **Request Type:** GET  
 - **Purpose:** Retrieves a country by its capital.  
 - **Response Format:**  
@@ -340,9 +341,65 @@ Here’s a detailed breakdown of the routes in the required documentation format
       "error": "Failed to get country: [details]"
     }
     ```  
+#### **Route Name:** Get Country by Code
+- **Path:** `/api/get-countries-by-code/<str:countrycode>`  
+- **Request Type:** GET  
+- **Purpose:** Retrieves country by its CCA2 code.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "countries": [{"name": "Panama", "alpha2_code": "PA"}]
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Failed to get countries by code: [details]"
+    }
+    ```  
+
+#### **Route Name:** Get Countries by Language  
+- **Path:** `/api/get-countries-by-language/<str:language>`  
+- **Request Type:** GET  
+- **Purpose:** Retrieves all countries that speak a given language.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "countries": [{"name": "Panama", "language": "Spanish"}]
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Failed to get countries by language: [details]"
+    }
+    ```
+
+#### **Route Name:** Get Countries by Currency
+- **Path:** `/api/get-countries-by-currency/<str:currency>`  
+- **Request Type:** GET  
+- **Purpose:** Retrieves all countries that use a given currency.  
+- **Response Format:**  
+  - Success:  
+    ```json
+    {
+      "status": "success",
+      "countries": [{"name": "Panama", "currencies":{"PAB":{"name":"Panamanian balboa","symbol":"B/."},"USD":{"name":"United States dollar","symbol":"$"}}}]
+    }
+    ```  
+  - Error:  
+    ```json
+    {
+      "error": "Failed to get countries by language: [details]"
+    }
+    ```
 
 #### **Route Name:** Get Countries by Region  
-- **Path:** `/api/get-countries-by-region`  
+- **Path:** `/api/get-countries-by-region/<str:region>`  
 - **Request Type:** GET  
 - **Purpose:** Retrieves all countries in a specified region.  
 - **Response Format:**  
@@ -350,7 +407,7 @@ Here’s a detailed breakdown of the routes in the required documentation format
     ```json
     {
       "status": "success",
-      "countries": [{"name": "Panama", "region": "Americas"}]
+      "countries": [{"name": "Panama", "region":"Americas"}]
     }
     ```  
   - Error:  
