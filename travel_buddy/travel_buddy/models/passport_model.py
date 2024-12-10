@@ -69,7 +69,7 @@ class PassportModel:
         Returns:
             List[dict[str, Any]: A list of the countries that speak the given language.
         """
-        logger.info("Retrieving countries that  based on CCA2 code.")
+        logger.info("Retrieving countries based on CCA2 code.")
     
         for country in self.passport.values():
             if country.countrycode.lower() == countrycode.lower():
@@ -86,6 +86,14 @@ class PassportModel:
         Returns:
             List[dict[str, Any]: A list of the countries that use the given currency.
         """
+       logger.info("Retrieving countries that use a given currency.")
+    
+       for country in self.passport.values():
+           if country.currency.lower() == currency.lower():
+                country = country.country
+                logger.info(f"Sucessfully obtained country with currency'{currency}'.")
+                return country
+
     def get_countries_by_region(self, region:str) -> List[dict[str, Any]]:
         """
         Gets a list of countries that belong to a given region.
