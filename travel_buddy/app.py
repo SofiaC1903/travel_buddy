@@ -240,26 +240,13 @@ def create_app(config_class=ProductionConfig):
 
             # Extract and validate required fields
             country = data.get('name')
-            capital = data.get('capital')
-            languages = data.get('languages')
-            currency = data.get('currency')
-            region = data.get('region')
-            countrycode = data.get('alpha2_code')
 
-
-            if not country or not capital or not languages or not currency or region not in ['Africa','Americas', 'Asia', 'Europe','Oceania'] or not countrycode:
+            if not country:
                 raise BadRequest("Invalid input. All fields are required with valid values.")
 
-            # Check that country code is only two letters long
-            try:
-                if len(countrycode) != 2:
-                    raise ValueError("Country code is longer than two letters.")
-            except ValueError as e:
-                return make_response(jsonify({'error': 'Country code must be a valid string with at most two letters'}), 400)
-
             # Call the Country function to add the country to the database
-            app.logger.info('Adding country: %s, %s, %s, %s, %s, %.2s', country, capital, languages, currency, region, countrycode)
-            Country.create_country(country, capital, languages, currency, region, countrycode)
+            app.logger.info('Adding country: %s', country)
+            Country.create_country(country)
 
             app.logger.info("Country added: %s", country)
             return make_response(jsonify({'status': 'country added', 'country': country}), 201)
