@@ -37,6 +37,7 @@ class PassportModel:
                 country = country.country
                 logger.info(f"Sucessfully obtained country with capital'{capital}'.")
                 return country
+        logger.info("No country in database has that capital.")
         
     def get_country_by_code(self, countrycode: str) -> str:
         """
@@ -59,7 +60,9 @@ class PassportModel:
                 country = country.country
                 logger.info(f"Sucessfully obtained country with code'{countrycode}'.")
                 return country
-    ##########################################################################################################       
+        logger.info("No country in database uses that CCA2 code.")
+   
+    
     def get_countries_by_language(self, language:str) -> List[dict[str, Any]]:
         """
         Gets a list of countries that speak an entered language.
@@ -72,11 +75,14 @@ class PassportModel:
         logger.info("Retrieving countries based on CCA2 code.")
     
         for country in self.passport.values():
-            if country.countrycode.lower() == countrycode.lower():
-                country = country.country
-                logger.info(f"Sucessfully obtained country with code'{countrycode}'.")
-                return country
-   ###################################################################################################
+            country_list = []
+            if country.languages.lower() == language.lower():
+                country_list += [country.country]
+                logger.info(f"Sucessfully obtained country that speak'{language}'.")
+                return country_list
+            
+        logger.info("No countries in database speak this language.")
+   
     def get_countries_by_currency(self, currency:str) -> List[dict[str, Any]]:
        """
         Gets a list of countries that used an entered currency.
@@ -87,12 +93,14 @@ class PassportModel:
             List[dict[str, Any]: A list of the countries that use the given currency.
         """
        logger.info("Retrieving countries that use a given currency.")
-    
+       country_list = []
        for country in self.passport.values():
            if country.currency.lower() == currency.lower():
-                country = country.country
+                country_list += [country.country]
                 logger.info(f"Sucessfully obtained country with currency'{currency}'.")
-                return country
+                return country_list
+           
+       logger.info("No countries in database use this currency.")
 
     def get_countries_by_region(self, region:str) -> List[dict[str, Any]]:
         """
@@ -103,5 +111,15 @@ class PassportModel:
         Returns:
             List[dict[str, Any]: A list of the countries that belong to the given region.
         """
+        logger.info("Retrieving countries that belong to a given region.")
+    
+        for country in self.passport.values():
+           country_list = []
+           if country.region.lower() == region.lower():
+                country_list += [country.country]
+                logger.info(f"Sucessfully obtained country belonging to region'{region}'.")
+                return country_list
+
+        logger.info("No countries in database belong within that reigon.")
 
 #List[dict[str, Any]]
