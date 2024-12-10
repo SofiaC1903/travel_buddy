@@ -57,23 +57,28 @@ class Country(db.Model):
         Raises:
             IntegrityError: If there is a database error.
         """
-        # Validate price and difficulty
-        #if price <= 0:
-        #    raise ValueError(f"Invalid price: {price}. Price must be a positive number.")
-        #if difficulty not in ['LOW', 'MED', 'HIGH']:
-        #    raise ValueError(f"Invalid difficulty level: {difficulty}. Must be 'LOW', 'MED', or 'HIGH'.")
-
-        # Create and commit the new country
-        capital = info.get_country_capital(country)
-        languages = info.get_country_language(country)
-        currency = info.get_country_currency(country)
-        region = info.get_country_region(country)
-        countrycode = info.get_country_code(country)
-        new_country = cls(country = country, capital= capital, languages=languages, currency=currency, region= region, countrycode=countrycode)
         try:
+            capital = info.get_country_capital_data(country)
+            languages = info.get_country_language_data(country)
+            currency = info.get_country_currency_data(country)
+            region = info.get_country_region_data(country)
+            countrycode = info.get_country_code_data(country)
+
+            languages_str = ', '.join(languages) if languages else ''
+            currency_str = ', '.join(currency) if currency else ''
+
+            new_country = cls(
+                country=country,
+                capital=capital,
+                languages=languages_str,
+                currency=currency_str,
+                region=region,
+                countrycode=countrycode
+            )
             db.session.add(new_country)
             db.session.commit()
             logger.info("Country successfully added to the database: %s", country)
+
         except Exception as e:
             db.session.rollback()
             if isinstance(e, IntegrityError):
@@ -84,22 +89,19 @@ class Country(db.Model):
                 raise
     
     @classmethod
-    def clear_countries() -> None:
+    def clear_countries(cls) -> None:
         """
-        Recreates the countries table, effectively deleting all countries.
+        Deletes all entries from the countries table.
 
         Raises:
-            sqlite3.Error: If any database error occurs.
+            Exception: If any database error occurs.
         """
         try:
-            # Drop the countries table if it exists
-            db.drop_all(bind=None, tables=[Country.__table__])
-            
-            # Create the countries table again
-            db.create_all(bind=None)
+            # Explicitly drop and recreate the table
+            cls.__table__.drop(db.engine)  # Drop the table
+            cls.__table__.create(db.engine)  # Recreate the table
 
             logger.info("Countries cleared and table recreated successfully.")
-
         except Exception as e:
             logger.error("Error while clearing countries: %s", str(e))
             raise e

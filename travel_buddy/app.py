@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response, Response, request
 from werkzeug.exceptions import BadRequest, Unauthorized
 # from flask_cors import CORS
+from sqlalchemy.sql import text
 
 from config import ProductionConfig
 from travel_buddy.db import db
@@ -42,6 +43,15 @@ def create_app(config_class=ProductionConfig):
         """
         app.logger.info('Health check')
         return make_response(jsonify({'status': 'healthy'}), 200)
+    
+    
+    @app.route('/api/db-check', methods=['GET'])
+    def db_check():
+        try:
+            db.session.execute(text('SELECT 1'))
+            return jsonify({'database_status': 'healthy'}),  200
+        except Exception as e:
+            return jsonify({'database_status': 'unhealthy', 'error': str(e)}), 500
 
     ##########################################################
     #
@@ -49,7 +59,7 @@ def create_app(config_class=ProductionConfig):
     #
     ##########################################################
 
-    @app.route('/api/create-user', methods=['POST'])
+    @app.route('/api/create-account', methods=['POST'])
     def create_user() -> Response:
         """
         Route to create a new user.
@@ -86,73 +96,6 @@ def create_app(config_class=ProductionConfig):
             app.logger.error("Failed to add user: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
         
-    @app.route('/api/users', methods=['GET'])
-    def get_users() -> Response:
-        """
-        Route to retrieve all users.
-
-        Returns:
-            JSON response with a list of all users.
-            Each user could be represented as a dictionary, for instance:
-            {
-                "id": user_id,
-                "username": username
-            }
-
-        Raises:
-            500 error if there is an issue retrieving users from the database.
-        """
-        app.logger.info('Fetching all users')
-        try:
-            # Retrieve all users from the database
-            users = User.get_all_users()  # Ensure User.get_all_users() returns something iterable
-
-            # Convert users to a JSON-serializable list of dicts
-            # Adjust the fields as necessary based on your User model
-            users_list = []
-            for user in users:
-                users_list.append({
-                    'id': user.id,
-                    'username': user.username
-                })
-
-            app.logger.info("Total users fetched: %d", len(users_list))
-            return make_response(jsonify(users_list), 200)
-        except Exception as e:
-            app.logger.error("Failed to fetch users: %s", str(e))
-            return make_response(jsonify({'error': str(e)}), 500)
-        
-    @app.route('/api/users/<int:user_id>', methods=['GET'])
-    def get_user(user_id: int) -> Response:
-        """
-        Route to retrieve a single user by their unique ID.
-
-        Args:
-            user_id (int): The ID of the user to retrieve.
-
-        Returns:
-            JSON response with the user's details if found, or a 404 error if not found.
-            
-        Raises:
-            500 error if there is an issue retrieving the user from the database.
-        """
-        app.logger.info('Fetching user with ID: %d', user_id)
-        try:
-            user = User.get_user_by_id(user_id)  # Ensure this method exists in your User model
-            if user is None:
-                app.logger.warning("User not found for ID: %d", user_id)
-                return make_response(jsonify({'error': 'User not found'}), 404)
-
-            user_data = {
-                'id': user.id,
-                'username': user.username
-            }
-
-            return make_response(jsonify(user_data), 200)
-        except Exception as e:
-            app.logger.error("Failed to fetch user: %s", str(e))
-            return make_response(jsonify({'error': str(e)}), 500)
-
     @app.route('/api/delete-user', methods=['DELETE'])
     def delete_user() -> Response:
         """
@@ -187,11 +130,11 @@ def create_app(config_class=ProductionConfig):
         except Exception as e:
             app.logger.error("Failed to delete user: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-
-    @app.route('/login', methods=['POST'])
+        
+    @app.route('/api/login', methods=['POST'])
     def login():
         """
-        Route to log in a user and load their combatants.
+        Route to log in a user.
 
         Expected JSON Input:
             - username (str): The username of the user.
@@ -205,67 +148,29 @@ def create_app(config_class=ProductionConfig):
             401 error if authentication fails (invalid username or password).
             500 error for any unexpected server-side issues.
         """
-        data = request.get_json()
-        if not data or 'username' not in data or 'password' not in data:
-            app.logger.error("Invalid request payload for login.")
-            raise BadRequest("Invalid request payload. 'username' and 'password' are required.")
-
-        username = data['username']
-        password = data['password']
-
         try:
+            # Parse and validate input
+            data = request.get_json()
+            if not data or 'username' not in data or 'password' not in data:
+                app.logger.error("Invalid request payload for login.")
+                return jsonify({"error": "Invalid request payload. 'username' and 'password' are required."}), 400
+
+            username = data['username'].strip()
+            password = data['password']
+
             # Validate user credentials
-            if not User.check_password(username, password):
-                app.logger.warning("Login failed for username: %s", username)
-                raise Unauthorized("Invalid username or password.")
-
-            # Get user ID
-            user_id = User.get_id_by_username(username)
-
-            app.logger.info("User %s logged in successfully.", username)
-            return jsonify({"message": f"User {username} logged in successfully."}), 200
-
-        except Unauthorized as e:
-            return jsonify({"error": str(e)}), 401
-        except Exception as e:
-            app.logger.error("Error during login for username %s: %s", username, str(e))
-            return jsonify({"error": "An unexpected error occurred."}), 500
-
-
-    @app.route('/logout', methods=['POST'])
-    def logout():
-        """
-        Route to log out a user and save their combatants to MongoDB.
-
-        Expected JSON Input:
-            - username (str): The username of the user.
-
-        Returns:
-            JSON response indicating the success of the logout.
-
-        Raises:
-            400 error if input validation fails or user is not found in MongoDB.
-            500 error for any unexpected server-side issues.
-        """
-        data = request.get_json()
-        if not data or 'username' not in data:
-            app.logger.error("Invalid request payload for logout.")
-            raise BadRequest("Invalid request payload. 'username' is required.")
-
-        username = data['username']
-
-        try:
-            # Get user ID
-            user_id = User.get_id_by_username(username)
-
-            app.logger.info("User %s logged out successfully.", username)
-            return jsonify({"message": f"User {username} logged out successfully."}), 200
+            if User.check_password(username, password):
+                app.logger.info("User %s logged in successfully.", username)
+                return jsonify({"message": f"User {username} logged in successfully."}), 200
+            else:
+                app.logger.warning("Invalid credentials for username: %s", username)
+                return jsonify({"error": "Invalid username or password."}), 401
 
         except ValueError as e:
-            app.logger.warning("Logout failed for username %s: %s", username, str(e))
-            return jsonify({"error": str(e)}), 400
+            app.logger.warning("Login failed: %s", str(e))
+            return jsonify({"error": str(e)}), 401
         except Exception as e:
-            app.logger.error("Error during logout for username %s: %s", username, str(e))
+            app.logger.error("Unexpected error during login: %s", str(e))
             return jsonify({"error": "An unexpected error occurred."}), 500
 
 
@@ -275,46 +180,51 @@ def create_app(config_class=ProductionConfig):
     #
     ##########################################################
 
-
     @app.route('/api/create-country', methods=['POST'])
     def add_country() -> Response:
         """
         Route to add a new country to the database.
-
-        Expected JSON Input:
-            - country (str): The name of the country (country).
-            - capital (str): The capital of the country (e.g., Berlin, Oslo, Panama City).
-            - languages (float): The languages of a country (e.g., English, Spanish, French, etc.).
-            - currency (str): The currency used by a countery (e.g., Euro, USD, Pound, etc.).
-            - region(str):  The region/continent a country belongs to. (e.g., Asia, Africa, Europe, etc.).
-            - country code(str): The country code in CCA2 format for a country. (e.g., 'PA', 'US', 'JM')
-
-        Returns:
-            JSON response indicating the success of the country addition.
-        Raises:
-            400 error if input validation fails.
-            500 error if there is an issue adding the country to the database.
         """
         app.logger.info('Creating new country')
+
         try:
-            # Get the JSON data from the request
+            # Get JSON data from the request
             data = request.get_json()
 
-            # Extract and validate required fields
-            country = data.get('name')
+            # Validate required fields
+            required_fields = ['country', 'capital', 'languages', 'currency', 'region', 'country_code']
+            missing_fields = [field for field in required_fields if field not in data or not data[field]]
+            if missing_fields:
+                return make_response(jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400)
 
-            if not country:
-                raise BadRequest("Invalid input. All fields are required with valid values.")
+            # # Normalize and validate the region
+            # region = data['region'].strip()
+            # valid_regions = ['Africa', 'Americas', 'Asia', 'Europe', 'Oceania']
+            # app.logger.info("Valid regions: %s", repr(valid_regions))
+            # app.logger.info("what is going on: %s", valid_regions[0], region)
+            # app.logger.info("Is region valid? %s", region not in valid_regions)
+            # app.logger.info("Region bytes: %s", list(region.encode()))
+            # app.logger.info("Valid region bytes (Africa): %s", list('Africa'.encode()))
 
-            # Call the Country function to add the country to the database
-            app.logger.info('Adding country: %s', country)
-            Country.create_country(country)
+            # if region not in valid_regions:
+            #     return make_response(jsonify({'error': f"Region must be one of: {', '.join(valid_regions)}"}), 400)
 
-            app.logger.info("Country added: %s", country)
-            return make_response(jsonify({'status': 'country added', 'country': country}), 201)
+            # Validate the country code length
+            if len(data['country_code']) > 2:
+                return make_response(jsonify({'error': "Country code must be in CCA2 format (2 characters)."}), 400)
+
+            # Add the country using the model's create_country method
+            Country.create_country(data['country'])
+
+            app.logger.info("Country added successfully: %s", data['country'])
+            return make_response(jsonify({'status': 'country added', 'country': data['country']}), 201)
+
+        except ValueError as ve:
+            app.logger.error("Validation error: %s", str(ve))
+            return make_response(jsonify({'error': str(ve)}), 400)
         except Exception as e:
-            app.logger.error("Failed to add country: %s", str(e))
-            return make_response(jsonify({'error': str(e)}), 500)
+            app.logger.error("Unexpected error: %s", str(e))
+            return make_response(jsonify({'error': 'An unexpected error occurred.'}), 500)
 
 
     @app.route('/api/delete-country/<int:country_id>', methods=['DELETE'])
@@ -337,26 +247,24 @@ def create_app(config_class=ProductionConfig):
             app.logger.error(f"Error deleting country: {e}")
             return make_response(jsonify({'error': str(e)}), 500)
 
-
     @app.route('/api/clear-countries', methods=['POST'])
-    def clear_countries() -> Response:
+    def clear_countries():
         """
-        Route to clear the list of countries entered by user.
+        Route to clear the list of countries entered by the user.
 
         Returns:
             JSON response indicating success of the operation.
-        Raises:
-            500 error if there is an issue clearing countries.
+            Raises a 500 error if there is an issue clearing countries.
         """
         try:
             app.logger.info('Clearing all countries...')
-            Country.clear_countries()
+            Country.clear_countries()  # Call the class method
             app.logger.info('Countries cleared.')
             return make_response(jsonify({'status': 'countries cleared'}), 200)
         except Exception as e:
             app.logger.error("Failed to clear countries: %s", str(e))
             return make_response(jsonify({'error': str(e)}), 500)
-    
+        
     @app.route('/api/get-countries', methods=['GET'])
     def get_countries() -> Response:
         """
@@ -461,7 +369,8 @@ def create_app(config_class=ProductionConfig):
         """
         try:
             app.logger.info('Getting country by its capital...')
-            country = PassportModel.get_country_by_capital(capital)
+            passport = PassportModel()  
+            country = passport.get_country_by_capital(capital)
             return make_response(jsonify({'status': 'success', 'country': country}), 200)
         except Exception as e:
             app.logger.error("Failed to get country: %s", str(e))
@@ -477,7 +386,8 @@ def create_app(config_class=ProductionConfig):
         """
         try:
             app.logger.info('Getting country by its code...')
-            country = PassportModel.get_country_by_code(countrycode)
+            passport = PassportModel()
+            country = passport.get_country_by_code(countrycode)
             return make_response(jsonify({'status': 'success', 'country': country}), 200)
         except Exception as e:
             app.logger.error("Failed to get country: %s", str(e))
@@ -493,7 +403,8 @@ def create_app(config_class=ProductionConfig):
         """
         try:
             app.logger.info('Getting countries by their language...')
-            country = PassportModel.get_countries_by_language(language)
+            passport = PassportModel()
+            country = passport.get_countries_by_language(language)
             return make_response(jsonify({'status': 'success', 'countries': country}), 200)
         except Exception as e:
             app.logger.error("Failed to get countries: %s", str(e))
@@ -509,7 +420,8 @@ def create_app(config_class=ProductionConfig):
         """
         try:
             app.logger.info('Getting countries by their currency...')
-            country = PassportModel.get_countries_by_currency(currency)
+            passport = PassportModel()
+            country = passport.get_countries_by_currency(currency)
             return make_response(jsonify({'status': 'success', 'countries': country}), 200)
         except Exception as e:
             app.logger.error("Failed to get countries: %s", str(e))
@@ -525,7 +437,8 @@ def create_app(config_class=ProductionConfig):
         """
         try:
             app.logger.info('Getting countries by their region...')
-            country = PassportModel.get_countries_by_region(region)
+            passport = PassportModel()
+            country = passport.get_countries_by_region(region)
             return make_response(jsonify({'status': 'success', 'countries': country}), 200)
         except Exception as e:
             app.logger.error("Failed to get countries: %s", str(e))

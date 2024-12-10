@@ -1,12 +1,13 @@
 import requests
-from flask import Blueprint, jsonify
+import logging
+from flask import Blueprint
 
-# Create a Blueprint for modularizing routes
 country_bp = Blueprint('country', __name__)
 
+logger = logging.getLogger(__name__)
 REST_COUNTRIES_API_BASE = 'https://restcountries.com/v3.1'
 
-def fetch_country_data(country):
+def fetch_country_data(country: str) -> dict:
     """
     Fetch raw country data from REST Countries API.
 
@@ -18,110 +19,83 @@ def fetch_country_data(country):
     """
     try:
         response = requests.get(f'{REST_COUNTRIES_API_BASE}/name/{country}')
-        if response.status_code == 200:
-            return response.json()[0]
-        else:
-            return {"error": "Country not found"}
-    except Exception as e:
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+        return response.json()[0]  # Return the first matching country's data
+    except requests.exceptions.RequestException as e:
+        logger.error("Error fetching data for country %s: %s", country, str(e))
         return {"error": str(e)}
 
-@country_bp.route('/api/country/language/<country>', methods=['GET'])
-def get_country_language(country):
+def get_country_capital_data(country: str) -> str:
     """
-    Flask route to query the languages spoken in a country.
+    Fetch the capital city of a given country.
+
+    Args:
+        country (str): Name of the country to query.
+
+    Returns:
+        str: The capital city or 'N/A' if not available.
     """
     data = fetch_country_data(country)
     if "error" in data:
-        return jsonify(data), 404
-    languages = list(data.get('languages', {}).values())
-    return jsonify({"country": country, "languages": languages}), 200
+        return "N/A"
+    return data.get('capital', ['N/A'])[0]  # Return the first capital if available
 
-@country_bp.route('/api/country/currency/<country>', methods=['GET'])
-def get_country_currency(country):
+def get_country_language_data(country: str) -> list:
     """
-    Query the currency used in a given country.
-    
+    Fetch the languages spoken in a given country.
+
     Args:
         country (str): Name of the country to query.
 
     Returns:
-        JSON response containing the country's currency or an error message.
+        list: List of languages or an empty list if not available.
     """
-    try:
-        response = requests.get(f'{REST_COUNTRIES_API_BASE}/name/{country}')
-        if response.status_code == 200:
-            data = response.json()[0]
-            currencies = list(data.get('currencies', {}).keys())
-            return jsonify({"country": country, "currencies": currencies}), 200
-        else:
-            return jsonify({"error": "Country not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    data = fetch_country_data(country)
+    if "error" in data:
+        return []
+    return list(data.get('languages', {}).values())
 
-@country_bp.route('/api/country/capital/<country>', methods=['GET'])
-def get_country_capital(country):
+def get_country_currency_data(country: str) -> list:
     """
-    Query the capital city of a given country.
-    
-    Args:
-        country (str): name of the country to query.
+    Fetch the currency used in a given country.
 
-    Returns:
-        JSON response containing the country's capital or an error message.
-    """
-    try:
-        response = requests.get(f'{REST_COUNTRIES_API_BASE}/name/{country}')
-        if response.status_code == 200:
-            data = response.json()[0]
-            capital = data.get('capital', ['N/A'])[0]
-            return jsonify({"country": country, "capital": capital}), 200
-        else:
-            return jsonify({"error": "Country not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@country_bp.route('/api/country/code/<country>', methods=['GET'])
-def get_country_code(country):
-    """
-    Query the CCA2 code of a given country.
-    
-    Args:
-        country (str): name of the country to query.
-
-    Returns:
-        JSON response containing the country's CCA2 code or an error message.
-    """
-    try:
-        response = requests.get(f'{REST_COUNTRIES_API_BASE}/name/{country}')
-        if response.status_code == 200:
-            data = response.json()[0]
-            code = data.get('cca2', 'N/A')  # Correctly fetch 'cca2' field
-            return jsonify({"country": country, "CCA2 Code": code}), 200
-        else:
-            return jsonify({"error": "Country not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@country_bp.route('/api/country/region/<country>', methods=['GET'])
-def get_country_region(country):
-    """
-    Query the region and subregion of a given country.
-    
     Args:
         country (str): Name of the country to query.
 
     Returns:
-        JSON response containing the country's region and subregion or an error message.
+        list: List of currencies or an empty list if not available.
     """
-    try:
-        response = requests.get(f'{REST_COUNTRIES_API_BASE}/name/{country}')
-        if response.status_code == 200:
-            data = response.json()[0]
-            region = data.get('region', 'N/A')
-            subregion = data.get('subregion', 'N/A')
-            return jsonify({"country": country, "region": region, "subregion": subregion}), 200
-        else:
-            return jsonify({"error": "Country not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    data = fetch_country_data(country)
+    if "error" in data:
+        return []
+    return list(data.get('currencies', {}).keys())
+
+def get_country_region_data(country: str) -> str:
+    """
+    Fetch the region of a given country.
+
+    Args:
+        country (str): Name of the country to query.
+
+    Returns:
+        str: The region or 'N/A' if not available.
+    """
+    data = fetch_country_data(country)
+    if "error" in data:
+        return "N/A"
+    return data.get('region', 'N/A')
+
+def get_country_code_data(country: str) -> str:
+    """
+    Fetch the CCA2 code of a given country.
+
+    Args:
+        country (str): Name of the country to query.
+
+    Returns:
+        str: The CCA2 code or 'N/A' if not available.
+    """
+    data = fetch_country_data(country)
+    if "error" in data:
+        return "N/A"
+    return data.get('cca2', 'N/A')
