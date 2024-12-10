@@ -2,9 +2,11 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response, Response, request
 from werkzeug.exceptions import BadRequest, Unauthorized
 from flask_cors import CORS
+
 import os
 from travel_buddy.config import ProductionConfig
 from travel_buddy.travel_buddy.db import db
+from travel_buddy.travel_buddy.models.country_model import Country
 from travel_buddy.travel_buddy.models.battle_model import BattleModel
 from travel_buddy.travel_buddy.models.kitchen_model import Meals
 from travel_buddy.travel_buddy.models.mongo_session_model import MongoSessionModel

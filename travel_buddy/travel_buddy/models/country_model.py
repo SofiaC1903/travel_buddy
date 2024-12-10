@@ -1,14 +1,14 @@
 from dataclasses import asdict, dataclass
 import logging
-import country as info
+import travel_buddy.travel_buddy.country as info
 from typing import Any, List
 
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import validates
 
-from travel_buddy.clients.redis_client import redis_client
-from travel_buddy.db import db
-from travel_buddy.utils.logger import configure_logger
+from travel_buddy.travel_buddy.db import db
+from travel_buddy.travel_buddy.utils.logger import configure_logger
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,18 @@ class Country(db.Model):
     countrycode: str = db.Column(db.String(10), default=0)
     deleted: bool = db.Column(db.Boolean, default=False)
 
+    @validates('countrycode')
+    def validate_countrycode(self, key, value):
+        if len(value) > 2:
+            raise ValueError("Country code must be in CCA2 format.")
+        return value
+
+    @validates('region')
+
+    def validate_region(self, key, value):
+        if value not in ['Africa', 'Americas', 'Asia', 'Europe', 'Oceania']:
+            raise ValueError("Region must be one of: 'Africa', 'Americas', 'Asia', 'Europe', 'Oceania'.")
+        return value
     def __post_init__(self):
         if len(self.countrycode) > 2:
             raise ValueError("Country code must be in CCA2 format.")
@@ -70,37 +82,32 @@ class Country(db.Model):
             else:
                 logger.error("Database error: %s", str(e))
                 raise
+    
+    @classmethod
+    def clear_countries() -> None:
+        """
+        Recreates the countries table, effectively deleting all countries.
 
-def clear_countries() -> None:
-    """
-    Recreates the countries table, effectively deleting all countries.
+        Raises:
+            sqlite3.Error: If any database error occurs.
+        """
+        try:
+            # Drop the countries table if it exists
+            db.drop_all(bind=None, tables=[Country.__table__])
+            
+            # Create the countries table again
+            db.create_all(bind=None)
 
-    Raises:
-        sqlite3.Error: If any database error occurs.
-    """
-    try:
-        # Drop the countries table if it exists
-        db.drop_all(bind=None, tables=[Country.__table__])
-        
-        # Create the countries table again
-        db.create_all(bind=None)
+            logger.info("Countries cleared and table recreated successfully.")
 
-        logger.info("Countries cleared and table recreated successfully.")
-
-    except Exception as e:
-        logger.error("Error while clearing countries: %s", str(e))
-        raise e
+        except Exception as e:
+            logger.error("Error while clearing countries: %s", str(e))
+            raise e
     
     @classmethod
     def delete_country(cls, country_id: int) -> None:
         """
         Soft delete a country by marking it as deleted.
-
-        Args:
-            country_id (int): The ID of the country to delete.
-
-        Raises:
-            ValueError: If the meal with the given ID does not exist or is already deleted.
         """
         country = cls.query.filter_by(id=country_id).first()
         if not country:
@@ -108,10 +115,10 @@ def clear_countries() -> None:
             raise ValueError(f"Country {country_id} not found")
         if country.deleted:
             logger.info("Country with ID %s has already been deleted", country_id)
-            raise ValueError(f"Meal with ID {country_id} has been deleted")
+            raise ValueError(f"Country with ID {country_id} has been deleted")
 
-        country.deleted = True
-        db.session.commit()
+        country.deleted = True  # Soft delete
+        db.session.commit()  # Triggers the SQLAlchemy 'after_delete' event
         logger.info("Country with ID %s marked as deleted.", country_id)
 
     @classmethod
@@ -153,35 +160,31 @@ def clear_countries() -> None:
             dict: The country data as a dictionary.
 
         Raises:
-            ValueError: If thecountry does not exist or is deleted.
+            ValueError: If the country does not exist or is deleted.
         """
         logger.info("Retrieving country by ID: %s", country_id)
-        cache_key = f"country_{country_id}"
-        cached_country = redis_client.hgetall(cache_key)
-        if cached_country:
-            logger.info("Country retrieved from cache: %s", country_id)
-            country_data = {k.decode(): v.decode() for k, v in cached_country.items()}
-            
-            # country_data['deleted'] is a string. We need to convert it to a bool
-            country_data['deleted'] = country_data.get('deleted', 'false').lower() == 'true'
-            if country_data['deleted']:
-                logger.info("Country with %s %s not found", "name" if country_name else "ID", country_name or country_id)
-                raise ValueError(f"Country {country_name or country_id} not found")
-            return country_data
         country = cls.query.filter_by(id=country_id).first()
         if not country or country.deleted:
             logger.info("Country with %s %s not found", "name" if country_name else "ID", country_name or country_id)
             raise ValueError(f"Country {country_name or country_id} not found")
-        # Convert the country object to a dictionary and cache it
-        logger.info("Country retrieved from database and cached: %s", country_id)
-        country_dict = asdict(country)
-        redis_client.hset(cache_key, mapping={k: str(v) for k, v in country_dict.items()})
-        return country_dict
+
+        # Convert the country object to a dictionary and return it
+        logger.info("Country retrieved from database: %s", country_id)
+        return {
+            "id": country.id,
+            "country": country.country,
+            "capital": country.capital,
+            "languages": country.languages,
+            "currency": country.currency,
+            "region": country.region,
+            "countrycode": country.countrycode,
+            "deleted": country.deleted
+        }
 
     @classmethod
     def get_country_by_name(cls, country_name: str) -> dict[str, Any]:
         """
-        Retrieve a country by its name, using a cached association between name and ID.
+        Retrieve a country by its name.
 
         Args:
             country_name (str): The name of the country.
@@ -193,24 +196,23 @@ def clear_countries() -> None:
             ValueError: If the country does not exist or is deleted.
         """
         logger.info("Retrieving country by name: %s", country_name)
-        cache_key = f"country_name:{country_name}"
-
-        # Check if name-to-ID association is cached
-        country_id = redis_client.get(cache_key)
-        if country_id:
-            logger.info("Country ID %s retrieved from cache for name: %s", country_id.decode(), country_name)
-            # Use get_country_by_id to retrieve the full country data from ID
-            return cls.get_country_by_id(int(country_id.decode()), country_name)
-
-        # Fallback to database if cache miss
         country = cls.query.filter_by(country=country_name).first()
         if not country or country.deleted:
             logger.info("Country with name %s not found", country_name)
             raise ValueError(f"Country {country_name} not found")
 
-        # Cache the name-to-ID association and retrieve the full country data
-        redis_client.set(cache_key, str(country.id))
-        return cls.get_country_by_id(country.id, country_name)
+        # Convert the country object to a dictionary and return it
+        logger.info("Country retrieved from database: %s", country_name)
+        return {
+            "id": country.id,
+            "country": country.country,
+            "capital": country.capital,
+            "languages": country.languages,
+            "currency": country.currency,
+            "region": country.region,
+            "countrycode": country.countrycode,
+            "deleted": country.deleted
+        }
 
 def update_cache_for_country(mapper, connection, target):
     """
@@ -223,25 +225,25 @@ def update_cache_for_country(mapper, connection, target):
 
     Args:
         mapper (Mapper): The SQLAlchemy Mapper object, which provides information
-                         about the model being updated (automatically passed by SQLAlchemy).
+                        about the model being updated (automatically passed by SQLAlchemy).
         connection (Connection): The SQLAlchemy Connection object used for the
-                                 database operation (automatically passed by SQLAlchemy).
+                                database operation (automatically passed by SQLAlchemy).
         target (Country): The instance of the Country model that was deleted.
                         The `target` object contains the updated country data.
 
     Side-effects:
         - If the country is marked as deleted (`target.deleted` is True), the function
-          removes the corresponding cache entry from Redis.
+        removes the corresponding cache entry from Redis.
         - If the meal is not marked as deleted, the function updates the Redis cache
-          entry with the latest country data using the `hset` command.
+        entry with the latest country data using the `hset` command.
     """
     cache_key = f"country:{target.id}"
-    if target.deleted:
+    if target.deleted:  # Soft delete logic
         redis_client.delete(cache_key)
     else:
         redis_client.hset(
             cache_key,
-            mapping={k.encode(): str(v).encode() for k, v in asdict(target).items()}
+            mapping={k: str(v) for k, v in asdict(target).items()}
         )
 
 # Register the listener for delete events
